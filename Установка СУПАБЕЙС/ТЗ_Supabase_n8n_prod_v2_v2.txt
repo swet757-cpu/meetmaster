@@ -21,6 +21,12 @@ N8N_OWNER_EMAIL=<N8N_OWNER_EMAIL>
 N8N_OWNER_PASSWORD=<N8N_OWNER_PASSWORD>
 ALLOW_REBOOT=yes
 
+Правило по секретам:
+- если пользователь случайно вставил пароль, токен, API-ключ, приватный ключ или .env-секрет, не повторять его в ответе;
+- заменить секрет в ответе на [СКРЫТО] и сразу предупредить, что его нужно сменить;
+- не сохранять реальные пароли в ТЗ, чатах, логах, скриншотах и обычных текстовых файлах;
+- в командах проверки использовать только имена переменных и маски, без вывода значений.
+
 Подробно по каждому полю: что это и откуда брать
 
 1. PROJECT_NAME
@@ -104,6 +110,8 @@ email владельца (админа) n8n, под которым будет в
 1. DOMAIN_SUPABASE и DOMAIN_N8N уже указывают на SERVER_PUBLIC_IP.
 2. SSH_PUBLIC_KEY вставлен одной строкой, без переносов.
 3. Все поля в формате <...> заменены на реальные значения.
+4. Для n8n и Supabase используются конкретные теги образов, не latest.
+5. Все секреты Supabase сгенерированы заново, дефолтные значения из .env.example не оставлены.
 
 ---
 
@@ -173,6 +181,12 @@ N8N_OWNER_EMAIL=<N8N_OWNER_EMAIL>
 N8N_OWNER_PASSWORD=<N8N_OWNER_PASSWORD>
 ALLOW_REBOOT=yes
 
+ПРАВИЛО ПО СЕКРЕТАМ:
+- если пользователь случайно вставил пароль, токен, API-ключ, приватный ключ или .env-секрет, не повторять его в ответе;
+- заменить секрет в ответе на [СКРЫТО] и сразу предупредить, что его нужно сменить;
+- не сохранять реальные пароли в ТЗ, чатах, логах, скриншотах и обычных текстовых файлах;
+- в командах проверки использовать только имена переменных и маски, без вывода значений.
+
 СДЕЛАЙ ПО ЭТАПАМ:
 1. Pre-check:
 - проверить DNS для обоих доменов (что указывают на SERVER_PUBLIC_IP);
@@ -194,33 +208,62 @@ ALLOW_REBOOT=yes
 4. Безопасность:
 - включить UFW (deny incoming, allow outgoing);
 - разрешить только 22, 80, 443;
-- включить fail2ban для sshd.
+- включить fail2ban для sshd;
+- учесть, что Docker может публиковать порты в обход правил UFW;
+- после запуска проверить, что наружу доступны только 22/80/443, а сервисные порты n8n/Supabase слушают только loopback.
 
 5. Docker:
 - установить Docker Engine + Compose plugin из официального репозитория;
 - включить log rotation;
-- создать каталоги /opt/stack/... по шаблону.
+- создать каталоги /opt/stack/... по шаблону;
+- не публиковать внутренние порты Docker на 0.0.0.0;
+- для локальных сервисов использовать bind вида 127.0.0.1:PORT:PORT.
 
 6. n8n:
 - поднять postgres + n8n в /opt/stack/n8n;
-- использовать актуальную стабильную версию n8n;
+- использовать актуальную стабильную версию n8n и зафиксировать точный тег образа;
 - bind только на 127.0.0.1:5678;
 - настроить N8N_ENCRYPTION_KEY;
-- создать владельца N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD;
+- настроить переменные для работы за reverse proxy:
+  N8N_HOST=DOMAIN_N8N
+  N8N_PROTOCOL=https
+  N8N_EDITOR_BASE_URL=https://DOMAIN_N8N/
+  WEBHOOK_URL=https://DOMAIN_N8N/
+  N8N_PROXY_HOPS=1
+- отключить внешнюю диагностику, шаблоны и уведомления n8n:
+  N8N_DIAGNOSTICS_ENABLED=false
+  N8N_VERSION_NOTIFICATIONS_ENABLED=false
+  N8N_TEMPLATES_ENABLED=false
+  EXTERNAL_FRONTEND_HOOKS_URLS=
+  N8N_DIAGNOSTICS_CONFIG_FRONTEND=
+  N8N_DIAGNOSTICS_CONFIG_BACKEND=
+- N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD использовать как данные для первого владельца n8n;
+- не считать N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD штатными env-переменными автосоздания owner, если текущая документация n8n это не поддерживает;
+- первого владельца создать через официальный setup UI или официальный CLI/API-способ, если он доступен в установленной версии;
 - включить N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true;
 - исправить права n8n-data при необходимости.
 
 7. Supabase:
 - развернуть docker-стек Supabase в /opt/stack/supabase;
-- использовать актуальные версии образов;
-- заполнить .env production-значениями;
+- использовать актуальные версии образов и зафиксировать точные теги;
+- заполнить .env production-значениями, не оставлять дефолты из .env.example;
+- сгенерировать и заменить минимум:
+  POSTGRES_PASSWORD
+  JWT_SECRET
+  ANON_KEY
+  SERVICE_ROLE_KEY
+  DASHBOARD_USERNAME
+  DASHBOARD_PASSWORD
+  SECRET_KEY_BASE
+  VAULT_ENC_KEY
+- проверить, что ANON_KEY и SERVICE_ROLE_KEY выпущены от текущего JWT_SECRET;
 - ограничить публикацию внутренних портов loopback там, где нужно;
 - поднять стек.
 
 8. HTTPS:
 - установить Caddy;
 - настроить прокси:
-  DOMAIN_SUPABASE -> 127.0.0.1:8000
+  DOMAIN_SUPABASE -> 127.0.0.1:8000 (Supabase gateway/Studio)
   DOMAIN_N8N -> 127.0.0.1:5678
 - получить TLS автоматически;
 - Caddy basicauth для n8n не включать.
@@ -240,6 +283,8 @@ ALLOW_REBOOT=yes
 3. Итог проверок (SSH, HTTPS, docker ps, backup).
 4. Точные версии n8n и Supabase, которые были установлены.
 5. Список ошибок (если были) и что исправлено.
+6. Подтверждение, что открыты только порты 22/80/443, а 5678/8000 не доступны извне.
+7. Подтверждение, что в Supabase .env нет дефолтных секретов из .env.example.
 
 ---
 
@@ -262,7 +307,14 @@ curl -I https://<DOMAIN_N8N>
 5. Контейнеры запущены:
 sudo docker ps
 
-6. Бэкап запускается вручную:
+6. Проверка открытых портов на сервере:
+sudo ss -tulpen
+
+Ожидается:
+- 22/80/443 доступны публично;
+- 5678 и 8000 слушают только 127.0.0.1.
+
+7. Бэкап запускается вручную:
 sudo /opt/stack/scripts/backup-all.sh
 
 Если все пункты проходят, работа выполнена.
@@ -285,3 +337,7 @@ sudo /opt/stack/scripts/backup-all.sh
 
 5. Бэкап не создается
 Проверить cron, права на /opt/stack/scripts и путь /opt/stack/backups.
+
+6. Порты n8n/Supabase видны извне
+Проверить секцию ports в docker-compose.yml.
+Исправить публикацию с PORT:PORT на 127.0.0.1:PORT:PORT и перезапустить стек.

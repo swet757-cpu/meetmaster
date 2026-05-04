@@ -1,0 +1,112 @@
+Инструкция по установке сервера Supabase + n8n
+
+1. Открыть папку в VS Code
+- Запусти VS Code.
+- Нажми File → Open Folder...
+- Выбери папку c:\Users\Анна\Desktop\тестовая\Установка СУПАБЕЙС
+- Нажми Select Folder.
+
+2. Открыть терминал в VS Code
+- Нажми Ctrl+` (клавиша рядом с Esc).
+- Или меню Terminal → New Terminal.
+
+3. Подключиться к серверу
+- В терминале вставь:
+  ssh svetneiro@155.212.135.186
+- Нажми Enter.
+- Если попросит пароль, введи его.
+- Пароли, токены, API-ключи и .env-секреты не вставляй в чат, скриншоты и обычные текстовые файлы.
+- Если пароль случайно попал в чат или файл, считай его скомпрометированным и сразу меняй.
+
+4. Проверить, что ты на сервере
+- Вставь команду:
+  whoami
+- Должно вывести: svetneiro
+
+5. Обновить систему
+- Вставь команду:
+  sudo apt update && sudo apt upgrade -y
+
+6. Установить московское время
+- Вставь:
+  sudo timedatectl set-timezone Europe/Moscow
+
+7. Создать swap-файл (если нужно)
+- Вставь по очереди:
+  sudo fallocate -l 4G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  sudo cp /etc/fstab /etc/fstab.bak
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+8. Включить защиту через UFW
+- Вставь:
+  sudo apt install ufw fail2ban -y
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+  sudo ufw allow 22
+  sudo ufw allow 80
+  sudo ufw allow 443
+  sudo ufw enable
+
+9. Установить Docker
+- Вставь:
+  sudo apt install ca-certificates curl gnupg lsb-release -y
+  sudo mkdir -p /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt update
+  sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+  sudo systemctl enable --now docker
+
+10. Установить Caddy
+- Вставь:
+  sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/ubuntu $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+  sudo apt update
+  sudo apt install caddy -y
+  sudo systemctl enable --now caddy
+
+11. Запустить n8n
+- Перед запуском отключить внешнюю диагностику, шаблоны и уведомления n8n:
+  cd /opt/stack/n8n
+  sudo cp .env .env.bak_$(date +%F_%H%M%S)
+  sudo grep -q '^N8N_DIAGNOSTICS_ENABLED=' .env || echo 'N8N_DIAGNOSTICS_ENABLED=false' | sudo tee -a .env
+  sudo grep -q '^N8N_VERSION_NOTIFICATIONS_ENABLED=' .env || echo 'N8N_VERSION_NOTIFICATIONS_ENABLED=false' | sudo tee -a .env
+  sudo grep -q '^N8N_TEMPLATES_ENABLED=' .env || echo 'N8N_TEMPLATES_ENABLED=false' | sudo tee -a .env
+  sudo grep -q '^EXTERNAL_FRONTEND_HOOKS_URLS=' .env || echo 'EXTERNAL_FRONTEND_HOOKS_URLS=' | sudo tee -a .env
+  sudo grep -q '^N8N_DIAGNOSTICS_CONFIG_FRONTEND=' .env || echo 'N8N_DIAGNOSTICS_CONFIG_FRONTEND=' | sudo tee -a .env
+  sudo grep -q '^N8N_DIAGNOSTICS_CONFIG_BACKEND=' .env || echo 'N8N_DIAGNOSTICS_CONFIG_BACKEND=' | sudo tee -a .env
+- Вставь:
+  cd /opt/stack/n8n
+  sudo docker compose --env-file .env -f compose.yml up -d
+- Проверить:
+  sudo docker compose --env-file .env -f compose.yml ps
+  curl -I --max-time 30 https://n8n1.sweevottak.pro
+  curl -fsS http://127.0.0.1:5678/healthz
+
+12. Запустить Supabase
+- Вставь:
+  cd /opt/stack/supabase
+  sudo docker compose --env-file .env -f docker-compose.yml up -d
+- Проверить:
+  sudo docker compose --env-file .env -f docker-compose.yml ps
+  curl -I --max-time 30 https://supabase2.sweevottak.pro
+  curl -I --max-time 30 http://127.0.0.1:8000
+
+13. Проверить безопасность
+- Вставь:
+  ss -tulpen | grep -E ':(22|80|443|5432|6543|5678|8000|8443)\b'
+  sudo sshd -T | grep -E '^(permitrootlogin|passwordauthentication)'
+- Должно быть:
+  PermitRootLogin no
+  PasswordAuthentication no
+
+14. Проверить бэкапы
+- Вставь:
+  sudo /opt/stack/scripts/backup-all.sh
+  sudo find /opt/stack/backups -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+
+Файл сохранен в папке Установка СУПАБЕЙС под именем Инструкция_установка_сервера_простая.txt.

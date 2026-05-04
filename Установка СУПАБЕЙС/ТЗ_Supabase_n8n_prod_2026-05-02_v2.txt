@@ -18,8 +18,14 @@ DOMAIN_SUPABASE=supabase2.sweevottak.pro
 DOMAIN_N8N=n8n1.sweevottak.pro
 LETSENCRYPT_EMAIL=swet757@gmail.com
 N8N_OWNER_EMAIL=swet757@gmail.com
-N8N_OWNER_PASSWORD=!QAZwsx123#@!
+N8N_OWNER_PASSWORD=[СКРЫТО]
 ALLOW_REBOOT=yes
+
+Правило по секретам:
+- если пользователь случайно вставил пароль, токен, API-ключ, приватный ключ или .env-секрет, не повторять его в ответе;
+- заменить секрет в ответе на [СКРЫТО] и сразу предупредить, что его нужно сменить;
+- не сохранять реальные пароли в ТЗ, чатах, логах, скриншотах и обычных текстовых файлах;
+- в командах проверки использовать только имена переменных и маски, без вывода значений.
 
 Подробно по каждому полю: что это и откуда брать
 
@@ -172,8 +178,14 @@ DOMAIN_SUPABASE=supabase2.sweevottak.pro
 DOMAIN_N8N=n8n1.sweevottak.pro
 LETSENCRYPT_EMAIL=swet757@gmail.com
 N8N_OWNER_EMAIL=swet757@gmail.com
-N8N_OWNER_PASSWORD=!QAZwsx123#@!
+N8N_OWNER_PASSWORD=[СКРЫТО]
 ALLOW_REBOOT=yes
+
+ПРАВИЛО ПО СЕКРЕТАМ:
+- если пользователь случайно вставил пароль, токен, API-ключ, приватный ключ или .env-секрет, не повторять его в ответе;
+- заменить секрет в ответе на [СКРЫТО] и сразу предупредить, что его нужно сменить;
+- не сохранять реальные пароли в ТЗ, чатах, логах, скриншотах и обычных текстовых файлах;
+- в командах проверки использовать только имена переменных и маски, без вывода значений.
 
 СДЕЛАЙ ПО ЭТАПАМ:
 1. Pre-check:
@@ -218,6 +230,13 @@ ALLOW_REBOOT=yes
   N8N_EDITOR_BASE_URL=https://DOMAIN_N8N/
   WEBHOOK_URL=https://DOMAIN_N8N/
   N8N_PROXY_HOPS=1
+- отключить внешнюю диагностику, шаблоны и уведомления n8n:
+  N8N_DIAGNOSTICS_ENABLED=false
+  N8N_VERSION_NOTIFICATIONS_ENABLED=false
+  N8N_TEMPLATES_ENABLED=false
+  EXTERNAL_FRONTEND_HOOKS_URLS=
+  N8N_DIAGNOSTICS_CONFIG_FRONTEND=
+  N8N_DIAGNOSTICS_CONFIG_BACKEND=
 - N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD использовать как данные для первого владельца n8n;
 - не считать N8N_OWNER_EMAIL/N8N_OWNER_PASSWORD штатными env-переменными автосоздания owner, если текущая документация n8n это не поддерживает;
 - первого владельца создать через официальный setup UI или официальный CLI/API-способ, если он доступен в установленной версии;
@@ -322,4 +341,5 @@ sudo /opt/stack/scripts/backup-all.sh
 6. Порты n8n/Supabase видны извне
 Проверить секцию ports в docker-compose.yml.
 Исправить публикацию с PORT:PORT на 127.0.0.1:PORT:PORT и перезапустить стек.
+
 

@@ -40,6 +40,9 @@
 - не удалять /opt/stack/backups без отдельного подтверждения;
 - не запускать docker system prune -a без отдельного подтверждения;
 - не хранить пароли в чатах и обычных текстовых файлах;
+- если пользователь случайно вставил пароль, токен, API-ключ, приватный ключ или .env-секрет, не повторять его в ответе;
+- случайно введенный секрет в ответе заменять на [СКРЫТО] и предупреждать, что его нужно сменить;
+- не выводить значения секретов через cat/grep/printenv/docker logs/journalctl; проверять только наличие переменных и права на файлы;
 - не менять DNS, если HTTPS уже работает.
 
 Перед любыми действиями:
@@ -118,6 +121,17 @@ curl -fsS http://127.0.0.1:5678/healthz
 - n8n-postgres: Up healthy;
 - HTTPS: HTTP/2 200;
 - healthz: {"status":"ok"}.
+
+Переменные приватности n8n в /opt/stack/n8n/.env должны быть заданы так:
+
+```env
+N8N_DIAGNOSTICS_ENABLED=false
+N8N_VERSION_NOTIFICATIONS_ENABLED=false
+N8N_TEMPLATES_ENABLED=false
+EXTERNAL_FRONTEND_HOOKS_URLS=
+N8N_DIAGNOSTICS_CONFIG_FRONTEND=
+N8N_DIAGNOSTICS_CONFIG_BACKEND=
+```
 
 Вход:
 - URL: https://n8n1.sweevottak.pro
