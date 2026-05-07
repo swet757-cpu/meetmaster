@@ -10,7 +10,7 @@ const typeNames = {
 
 const state = {
   today: startOfDay(new Date()),
-  rangeStart: startOfDay(new Date()),
+  rangeStart: startOfWeek(new Date()),
   monthDate: startOfMonth(new Date()),
   tasks: loadTasks(),
 };
@@ -70,7 +70,7 @@ function bindEvents() {
   });
 
   document.querySelector("#todayButton").addEventListener("click", () => {
-    state.rangeStart = startOfDay(new Date());
+    state.rangeStart = startOfWeek(new Date());
     state.monthDate = startOfMonth(new Date());
     setDefaultInputs();
     render();
@@ -135,7 +135,7 @@ function renderBoard() {
       .sort((a, b) => a.time.localeCompare(b.time));
 
     const column = document.createElement("section");
-    column.className = "day-column";
+    column.className = `day-column ${isWeekend(date) ? "weekend" : ""}`;
     column.dataset.date = iso;
     column.innerHTML = `
       <div class="day-head">
@@ -229,7 +229,7 @@ function renderMiniCalendar() {
     if (activeDates.has(iso)) button.classList.add("has-tasks");
     if (date >= state.rangeStart && date <= rangeEnd) button.classList.add("active");
     button.addEventListener("click", () => {
-      state.rangeStart = startOfDay(date);
+      state.rangeStart = startOfWeek(date);
       state.monthDate = startOfMonth(date);
       els.taskDate.value = iso;
       render();
@@ -327,6 +327,16 @@ function startOfDay(date) {
 
 function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfWeek(date) {
+  const day = startOfDay(date);
+  const offset = (day.getDay() + 6) % 7;
+  return addDays(day, -offset);
+}
+
+function isWeekend(date) {
+  return date.getDay() === 0 || date.getDay() === 6;
 }
 
 function addDays(date, days) {

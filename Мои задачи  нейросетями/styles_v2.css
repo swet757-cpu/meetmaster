@@ -119,6 +119,10 @@ button {
   padding: 11px;
 }
 
+.mini-panel {
+  padding: 9px;
+}
+
 .panel-title,
 .panel-heading,
 .topbar,
@@ -171,28 +175,43 @@ button {
   width: 44px;
 }
 
+.mini-panel .icon-button {
+  width: 32px;
+  min-height: 30px;
+  font-size: 21px;
+}
+
+.mini-panel .panel-title {
+  gap: 6px;
+}
+
+.mini-panel h2 {
+  font-size: 13px;
+}
+
 .weekdays,
 .mini-calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
+  gap: 2px;
 }
 
 .weekdays {
-  margin: 10px 0 5px;
+  margin: 7px 0 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
 }
 
 .mini-day {
   display: grid;
   place-items: center;
-  min-height: 27px;
+  min-height: 23px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: var(--ink);
+  font-size: 12px;
 }
 
 .mini-day.outside {
@@ -360,8 +379,8 @@ textarea:focus {
 
 .board {
   display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(118px, 1fr)) repeat(2, minmax(92px, 0.72fr));
+  gap: 7px;
   overflow: auto;
   padding-bottom: 6px;
 }
@@ -369,10 +388,14 @@ textarea:focus {
 .day-column {
   display: flex;
   flex-direction: column;
-  min-height: 250px;
+  min-height: 232px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.68);
+}
+
+.day-column.weekend {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .day-column.drag-over {
@@ -384,14 +407,16 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 7px;
   border-bottom: 1px solid var(--line);
 }
 
 .day-head strong {
   display: block;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .day-head span {
@@ -408,15 +433,15 @@ textarea:focus {
 .tasks {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 7px;
   flex: 1;
-  padding: 8px;
+  padding: 7px;
 }
 
 .empty {
   display: grid;
   place-items: center;
-  min-height: 82px;
+  min-height: 76px;
   border: 1px dashed #cbd5d1;
   border-radius: 8px;
   color: #8a9693;
@@ -426,12 +451,12 @@ textarea:focus {
 
 .task-card {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-left: 5px solid var(--green);
   border-radius: 8px;
   background: #fff;
-  padding: 8px;
+  padding: 7px;
   box-shadow: 0 8px 20px rgba(24, 34, 32, 0.07);
 }
 
@@ -545,7 +570,7 @@ textarea:focus {
   }
 
   .board {
-    grid-template-columns: repeat(7, minmax(170px, 1fr));
+    grid-template-columns: repeat(5, minmax(116px, 1fr)) repeat(2, minmax(94px, 0.75fr));
   }
 }
 
