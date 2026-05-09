@@ -1,0 +1,5 @@
+aiogram>=3.4,<4.0
+aiohttp-socks>=0.9,<1.0
+pandas>=2.0,<3.0
+openpyxl>=3.1,<4.0
+xlrd>=2.0,<3.0
