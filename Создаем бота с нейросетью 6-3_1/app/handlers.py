@@ -10,12 +10,14 @@ from aiogram.types import FSInputFile, Message, ReplyKeyboardRemove
 from app.config import get_settings
 from app.keyboards import AUDIT_MODE, AUTOCORRECT_MODE, CANCEL, mode_keyboard
 from app.states import AuditFlow
+from app.services.ai import analyze_osv_with_ai
 from app.services.audit import build_report, correct_mapping
 from app.services.parsers import parse_mapping, parse_osv, save_mapping_copy
+from app.services.statements import create_statement_workbook
 
 router = Router()
 logger = logging.getLogger(__name__)
-APP_VERSION = "2026-05-10.1"
+APP_VERSION = "2026-05-10.2"
 
 
 @router.message(F.text.lower() == "ping")
@@ -90,6 +92,30 @@ async def receive_mapping(message: Message, state: FSMContext) -> None:
         return
 
     await message.answer(report)
+
+    settings = get_settings()
+    statement_path = create_statement_workbook(osv, settings.work_dir, message.from_user.id, mapping)
+    await message.answer_document(
+        FSInputFile(statement_path),
+        caption="Готовый отчет P_L и BS. Суммы стоят формулами Excel, исходная ОСВ не менялась.",
+    )
+
+    if settings.openai_api_key:
+        await message.answer("Нейросеть анализирует ОСВ и маппинг. Это может занять до минуты.")
+    try:
+        ai_analysis = await analyze_osv_with_ai(
+            api_key=settings.openai_api_key,
+            model=settings.openai_model,
+            base_url=settings.openai_base_url,
+            report=report,
+            osv=osv,
+            mapping=mapping,
+        )
+    except Exception as exc:
+        logger.exception("AI-анализ не выполнен")
+        await message.answer(f"Нейросеть сейчас не ответила: {exc}")
+    else:
+        await message.answer(ai_analysis.text)
 
     if data.get("mode") == AUTOCORRECT_MODE:
         corrected = correct_mapping(osv, mapping)

@@ -8,6 +8,9 @@ class Settings:
     bot_token: str
     work_dir: Path
     telegram_proxy: str | None
+    openai_api_key: str | None
+    openai_model: str
+    openai_base_url: str | None
 
 
 def get_settings() -> Settings:
@@ -19,7 +22,17 @@ def get_settings() -> Settings:
     work_dir = Path(os.getenv("BOT_WORK_DIR", "bot_files")).resolve()
     work_dir.mkdir(parents=True, exist_ok=True)
     telegram_proxy = os.getenv("TELEGRAM_PROXY") or None
-    return Settings(bot_token=bot_token, work_dir=work_dir, telegram_proxy=telegram_proxy)
+    openai_api_key = os.getenv("OPENAI_API_KEY") or None
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+    openai_base_url = os.getenv("OPENAI_BASE_URL") or None
+    return Settings(
+        bot_token=bot_token,
+        work_dir=work_dir,
+        telegram_proxy=telegram_proxy,
+        openai_api_key=openai_api_key,
+        openai_model=openai_model,
+        openai_base_url=openai_base_url,
+    )
 
 
 def _load_dotenv(path: Path) -> None:
