@@ -9,6 +9,7 @@ import urllib.request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config.settings import Settings, load_settings
+from app.db.models import RequestStatus
 from app.db.repositories import BookingRequestRepository, ClosedDayRepository, UserRepository
 from app.db.session import create_app_session_factory, session_scope
 from app.services.email_validator import is_valid_email
@@ -59,14 +60,38 @@ class TelegramApi:
         chat_id: int,
         text: str,
         keyboard: list[list[str]] | None = None,
+        inline_keyboard: list[list[dict]] | None = None,
     ) -> None:
         payload: dict = {"chat_id": chat_id, "text": text}
-        if keyboard is not None:
+        if inline_keyboard is not None:
+            payload["reply_markup"] = {"inline_keyboard": inline_keyboard}
+        elif keyboard is not None:
             payload["reply_markup"] = {
                 "keyboard": [[{"text": item} for item in row] for row in keyboard],
                 "resize_keyboard": True,
             }
         self.request("sendMessage", payload, timeout=20)
+
+    def edit_message_text(self, chat_id: int, message_id: int, text: str) -> None:
+        self.request(
+            "editMessageText",
+            {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text,
+            },
+            timeout=20,
+        )
+
+    def answer_callback_query(self, callback_query_id: str, text: str) -> None:
+        self.request(
+            "answerCallbackQuery",
+            {
+                "callback_query_id": callback_query_id,
+                "text": text,
+            },
+            timeout=20,
+        )
 
     def get_updates(self, offset: int | None) -> list[dict]:
         payload = {"timeout": 25}
@@ -120,6 +145,9 @@ class LocalTestBot:
                 message = update.get("message")
                 if message:
                     asyncio.run(self.handle_message(message))
+                callback_query = update.get("callback_query")
+                if callback_query:
+                    asyncio.run(self.handle_callback_query(callback_query))
 
     async def handle_message(self, message: dict) -> None:
         chat_id = message["chat"]["id"]
@@ -175,6 +203,59 @@ class LocalTestBot:
             await self.confirm(chat_id, user, text)
         else:
             self.telegram.send_message(chat_id, "Выберите действие кнопкой.", MAIN_MENU)
+
+    async def handle_callback_query(self, callback_query: dict) -> None:
+        user = callback_query.get("from", {})
+        if user.get("id") not in self.settings.admin_telegram_ids:
+            self.telegram.answer_callback_query(callback_query["id"], "Это действие доступно только администратору.")
+            return
+
+        action, request_id = _parse_request_callback(callback_query.get("data", ""))
+        if action is None or request_id is None:
+            self.telegram.answer_callback_query(callback_query["id"], "Не удалось обработать действие.")
+            return
+
+        status_by_action = {
+            "approve": RequestStatus.APPROVED,
+            "decline": RequestStatus.DECLINED,
+            "cancel": RequestStatus.CANCELLED,
+        }
+        new_status = status_by_action.get(action)
+        if new_status is None:
+            self.telegram.answer_callback_query(callback_query["id"], "Действие пока не поддерживается.")
+            return
+
+        async with session_scope(self.session_factory) as session:
+            request_repo = BookingRequestRepository(session)
+            user_repo = UserRepository(session)
+            request = await request_repo.get_by_id(request_id)
+            if request is None:
+                self.telegram.answer_callback_query(callback_query["id"], "Заявка не найдена.")
+                return
+            if request.status != RequestStatus.PENDING_APPROVAL.value:
+                self.telegram.answer_callback_query(callback_query["id"], "Заявка уже обработана.")
+                return
+            await request_repo.change_status(
+                request=request,
+                new_status=new_status,
+                comment=f"Администратор выполнил действие: {action}.",
+            )
+            stored_user = await user_repo.get_by_id(request.user_id)
+
+        if stored_user is not None:
+            self.telegram.send_message(
+                stored_user.telegram_id,
+                _user_status_message(new_status, request.start_at),
+            )
+
+        message = callback_query.get("message") or {}
+        if message:
+            self.telegram.edit_message_text(
+                message["chat"]["id"],
+                message["message_id"],
+                f"{message.get('text', '')}\n\nСтатус изменен: {_status_label(new_status)}",
+            )
+        self.telegram.answer_callback_query(callback_query["id"], "Готово.")
 
     async def start_booking(self, chat_id: int) -> None:
         booking_settings = booking_settings_from_app_settings(self.settings)
@@ -349,7 +430,11 @@ class LocalTestBot:
             "Подтверждение добавим следующим этапом."
         )
         for admin_id in self.settings.admin_telegram_ids:
-            self.telegram.send_message(admin_id, text)
+            self.telegram.send_message(
+                admin_id,
+                text,
+                inline_keyboard=_admin_request_actions_keyboard(request_id),
+            )
 
 
 def _parse_date(value: str) -> date | None:
@@ -364,6 +449,49 @@ def _parse_duration(value: str) -> int | None:
         return int(value.replace("минут", "").strip())
     except ValueError:
         return None
+
+
+def _parse_request_callback(data: str) -> tuple[str | None, int | None]:
+    parts = data.split(":")
+    if len(parts) != 3 or parts[0] != "request":
+        return None, None
+    try:
+        return parts[1], int(parts[2])
+    except ValueError:
+        return None, None
+
+
+def _admin_request_actions_keyboard(request_id: int) -> list[list[dict]]:
+    return [
+        [
+            {"text": "Подтвердить", "callback_data": f"request:approve:{request_id}"},
+            {"text": "Отклонить", "callback_data": f"request:decline:{request_id}"},
+        ],
+        [{"text": "Отменить", "callback_data": f"request:cancel:{request_id}"}],
+    ]
+
+
+def _status_label(status: RequestStatus) -> str:
+    labels = {
+        RequestStatus.APPROVED: "подтверждена",
+        RequestStatus.DECLINED: "отклонена",
+        RequestStatus.CANCELLED: "отменена",
+    }
+    return labels.get(status, status.value)
+
+
+def _user_status_message(status: RequestStatus, start_at: datetime) -> str:
+    if status == RequestStatus.APPROVED:
+        return (
+            "Ваша заявка подтверждена.\n\n"
+            f"Дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+            "Добавление в Google Календарь будет подключено следующим этапом."
+        )
+    if status == RequestStatus.DECLINED:
+        return "Ваша заявка отклонена. Можно выбрать другой слот."
+    if status == RequestStatus.CANCELLED:
+        return "Ваша заявка отменена администратором."
+    return "Статус вашей заявки изменен."
 
 
 def main() -> None:

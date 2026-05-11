@@ -1,6 +1,6 @@
 from datetime import date
 
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from app.services.slot_service import Slot
 
@@ -9,6 +9,9 @@ MY_REQUESTS_TEXT = "Мои встречи"
 HELP_TEXT = "Помощь"
 CANCEL_TEXT = "Отмена"
 CONFIRM_TEXT = "Отправить заявку"
+APPROVE_ACTION = "approve"
+DECLINE_ACTION = "decline"
+CANCEL_ACTION = "cancel"
 
 BOOK_ALIASES = {BOOK_TEXT, "Записаться на встречу", "/book"}
 MY_REQUESTS_ALIASES = {MY_REQUESTS_TEXT, "Мои заявки", "/requests"}
@@ -87,3 +90,25 @@ def confirm_keyboard() -> ReplyKeyboardMarkup:
         input_field_placeholder="Подтвердите заявку",
     )
 
+
+def admin_request_actions_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Подтвердить",
+                    callback_data=f"request:{APPROVE_ACTION}:{request_id}",
+                ),
+                InlineKeyboardButton(
+                    text="Отклонить",
+                    callback_data=f"request:{DECLINE_ACTION}:{request_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Отменить",
+                    callback_data=f"request:{CANCEL_ACTION}:{request_id}",
+                )
+            ],
+        ]
+    )

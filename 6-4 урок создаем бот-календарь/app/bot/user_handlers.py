@@ -12,6 +12,7 @@ from app.bot.keyboards import (
     CONFIRM_TEXT,
     HELP_ALIASES,
     MY_REQUESTS_ALIASES,
+    admin_request_actions_keyboard,
     cancel_keyboard,
     confirm_keyboard,
     dates_keyboard,
@@ -348,4 +349,8 @@ async def _notify_admins(
         "Подтверждение, перенос и отклонение будут добавлены в админ-сценарии."
     )
     for admin_id in settings.admin_telegram_ids:
-        await bot.send_message(admin_id, text)
+        await bot.send_message(
+            admin_id,
+            text,
+            reply_markup=admin_request_actions_keyboard(request_id),
+        )
