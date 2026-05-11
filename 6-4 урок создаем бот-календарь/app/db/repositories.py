@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BookingRequest, ClosedDay, RequestStatus, Setting, StatusHistory, User
+from app.db.models import BookingRequest, ClosedDay, Meeting, RequestStatus, Setting, StatusHistory, User
 
 
 class UserRepository:
@@ -189,6 +189,43 @@ class BookingRequestRepository:
         self.session.add(history)
         await self.session.flush()
         return history
+
+
+class MeetingRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def get_by_booking_request_id(self, booking_request_id: int) -> Meeting | None:
+        result = await self.session.execute(
+            select(Meeting).where(Meeting.booking_request_id == booking_request_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_or_update(
+        self,
+        booking_request_id: int,
+        google_calendar_event_id: str,
+        status: str = "active",
+    ) -> Meeting:
+        meeting = await self.get_by_booking_request_id(booking_request_id)
+        if meeting is None:
+            meeting = Meeting(
+                booking_request_id=booking_request_id,
+                google_calendar_event_id=google_calendar_event_id,
+                status=status,
+            )
+            self.session.add(meeting)
+        else:
+            meeting.google_calendar_event_id = google_calendar_event_id
+            meeting.status = status
+
+        await self.session.flush()
+        return meeting
+
+    async def mark_cancelled(self, meeting: Meeting) -> Meeting:
+        meeting.status = "cancelled"
+        await self.session.flush()
+        return meeting
 
 
 class ClosedDayRepository:

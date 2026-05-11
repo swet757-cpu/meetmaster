@@ -7,6 +7,7 @@ from app.db.models import Base, RequestStatus, StatusHistory
 from app.db.repositories import (
     BookingRequestRepository,
     ClosedDayRepository,
+    MeetingRepository,
     SettingsRepository,
     UserRepository,
 )
@@ -124,6 +125,39 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(histories), 2)
             self.assertEqual(histories[-1].old_status, RequestStatus.PENDING_APPROVAL.value)
             self.assertEqual(histories[-1].new_status, RequestStatus.RESCHEDULED.value)
+
+    async def test_create_update_and_cancel_meeting(self) -> None:
+        async with session_scope(self.session_factory) as session:
+            user = await UserRepository(session).upsert_from_telegram(
+                telegram_id=1004,
+                first_name="User",
+                last_name=None,
+                username=None,
+            )
+            request = await BookingRequestRepository(session).create_pending(
+                user_id=user.id,
+                start_at=datetime(2026, 5, 13, 10, 0),
+                end_at=datetime(2026, 5, 13, 10, 30),
+                duration_minutes=30,
+                email="client@example.com",
+                description="Тест",
+            )
+            meeting_repo = MeetingRepository(session)
+            meeting = await meeting_repo.create_or_update(
+                booking_request_id=request.id,
+                google_calendar_event_id="event-1",
+            )
+            updated = await meeting_repo.create_or_update(
+                booking_request_id=request.id,
+                google_calendar_event_id="event-2",
+            )
+            await meeting_repo.mark_cancelled(updated)
+
+        async with session_scope(self.session_factory) as session:
+            meeting = await MeetingRepository(session).get_by_booking_request_id(meeting.booking_request_id)
+            self.assertIsNotNone(meeting)
+            self.assertEqual(meeting.google_calendar_event_id, "event-2")
+            self.assertEqual(meeting.status, "cancelled")
 
     async def test_list_by_user_and_blocking_for_day(self) -> None:
         async with session_scope(self.session_factory) as session:

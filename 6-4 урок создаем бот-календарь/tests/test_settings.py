@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from app.config.settings import _load_env_file
+from app.config.settings import _load_env_file, load_settings
 
 
 class SettingsTest(unittest.TestCase):
@@ -16,7 +16,9 @@ class SettingsTest(unittest.TestCase):
             )
 
             previous = os.environ.get("BOT_TOKEN")
+            previous_admin_ids = os.environ.get("ADMIN_TELEGRAM_IDS")
             os.environ["BOT_TOKEN"] = "from_environment"
+            os.environ.pop("ADMIN_TELEGRAM_IDS", None)
             try:
                 _load_env_file(env_path)
                 self.assertEqual(os.environ["BOT_TOKEN"], "from_environment")
@@ -26,9 +28,23 @@ class SettingsTest(unittest.TestCase):
                     os.environ.pop("BOT_TOKEN", None)
                 else:
                     os.environ["BOT_TOKEN"] = previous
-                os.environ.pop("ADMIN_TELEGRAM_IDS", None)
+                if previous_admin_ids is None:
+                    os.environ.pop("ADMIN_TELEGRAM_IDS", None)
+                else:
+                    os.environ["ADMIN_TELEGRAM_IDS"] = previous_admin_ids
+
+    def test_google_calendar_enabled_flag(self) -> None:
+        previous = os.environ.get("GOOGLE_CALENDAR_ENABLED")
+        try:
+            os.environ["GOOGLE_CALENDAR_ENABLED"] = "true"
+            settings = load_settings()
+            self.assertTrue(settings.google_calendar_enabled)
+        finally:
+            if previous is None:
+                os.environ.pop("GOOGLE_CALENDAR_ENABLED", None)
+            else:
+                os.environ["GOOGLE_CALENDAR_ENABLED"] = previous
 
 
 if __name__ == "__main__":
     unittest.main()
-

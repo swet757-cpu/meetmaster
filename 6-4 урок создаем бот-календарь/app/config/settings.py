@@ -38,6 +38,7 @@ class Settings:
     admin_telegram_ids: tuple[int, ...]
     telegram_force_ipv4: bool
     database_url: str
+    google_calendar_enabled: bool
     google_calendar_id: str
     google_oauth_client_secret_file: str
     google_oauth_token_file: str
@@ -57,6 +58,7 @@ def load_settings() -> Settings:
         admin_telegram_ids=_parse_int_list(os.environ.get("ADMIN_TELEGRAM_IDS", "")),
         telegram_force_ipv4=_parse_bool(os.environ.get("TELEGRAM_FORCE_IPV4", "true")),
         database_url=os.environ.get("DATABASE_URL", ""),
+        google_calendar_enabled=_parse_bool(os.environ.get("GOOGLE_CALENDAR_ENABLED", "false")),
         google_calendar_id=os.environ.get("GOOGLE_CALENDAR_ID", "primary"),
         google_oauth_client_secret_file=os.environ.get(
             "GOOGLE_OAUTH_CLIENT_SECRET_FILE",

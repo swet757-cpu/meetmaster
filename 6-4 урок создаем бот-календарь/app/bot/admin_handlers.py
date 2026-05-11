@@ -23,8 +23,18 @@ from app.bot.messages import ADMIN_ONLY
 from app.bot.states import AdminRescheduleFlow
 from app.config.settings import Settings
 from app.db.models import RequestStatus
-from app.db.repositories import BookingRequestRepository, ClosedDayRepository, UserRepository
+from app.db.repositories import (
+    BookingRequestRepository,
+    ClosedDayRepository,
+    MeetingRepository,
+    UserRepository,
+)
 from app.db.session import session_scope
+from app.integrations.google_calendar import (
+    CalendarEventDraft,
+    GoogleCalendarClient,
+    GoogleCalendarError,
+)
 from app.services.slot_service import (
     TimeInterval,
     available_booking_dates,
@@ -167,6 +177,7 @@ async def handle_request_action(
     async with session_scope(session_factory) as session:
         request_repo = BookingRequestRepository(session)
         user_repo = UserRepository(session)
+        meeting_repo = MeetingRepository(session)
         request = await request_repo.get_by_id(request_id)
         if request is None:
             await query.answer("Заявка не найдена.", show_alert=True)
@@ -185,6 +196,35 @@ async def handle_request_action(
             await query.answer("Это действие недоступно для текущего статуса заявки.", show_alert=True)
             return
 
+        meeting = await meeting_repo.get_by_booking_request_id(request.id)
+
+        if settings.google_calendar_enabled and new_status == RequestStatus.APPROVED:
+            try:
+                event_id = await _create_google_event(settings, request)
+            except GoogleCalendarError:
+                await query.answer(
+                    "Не удалось создать событие в Google Календаре. Заявка не изменена.",
+                    show_alert=True,
+                )
+                return
+            await meeting_repo.create_or_update(
+                booking_request_id=request.id,
+                google_calendar_event_id=event_id,
+            )
+
+        if settings.google_calendar_enabled and new_status == RequestStatus.CANCELLED and meeting is not None:
+            try:
+                await GoogleCalendarClient.from_settings(settings).delete_event(
+                    meeting.google_calendar_event_id
+                )
+            except GoogleCalendarError:
+                await query.answer(
+                    "Не удалось отменить событие в Google Календаре. Заявка не изменена.",
+                    show_alert=True,
+                )
+                return
+            await meeting_repo.mark_cancelled(meeting)
+
         await request_repo.change_status(
             request=request,
             new_status=new_status,
@@ -195,7 +235,11 @@ async def handle_request_action(
     if user is not None:
         await bot.send_message(
             user.telegram_id,
-            _user_status_message(new_status, request.start_at),
+            _user_status_message(
+                new_status,
+                request.start_at,
+                google_synced=settings.google_calendar_enabled,
+            ),
         )
 
     if query.message:
@@ -286,6 +330,7 @@ async def choose_reschedule_slot(
     async with session_scope(session_factory) as session:
         request_repo = BookingRequestRepository(session)
         user_repo = UserRepository(session)
+        meeting_repo = MeetingRepository(session)
         request = await request_repo.get_by_id(request_id)
         if request is None:
             await message.answer("Заявка не найдена.", reply_markup=admin_menu())
@@ -308,6 +353,29 @@ async def choose_reschedule_slot(
             await message.answer("Это время уже недоступно. Выберите другой слот.", reply_markup=slots_keyboard(slots))
             return
 
+        meeting = await meeting_repo.get_by_booking_request_id(request.id)
+        if settings.google_calendar_enabled:
+            draft = _google_event_draft(request, start_at, end_at)
+            try:
+                if meeting is None or meeting.status != "active":
+                    event_id = await GoogleCalendarClient.from_settings(settings).create_event(draft)
+                    await meeting_repo.create_or_update(
+                        booking_request_id=request.id,
+                        google_calendar_event_id=event_id,
+                    )
+                else:
+                    await GoogleCalendarClient.from_settings(settings).update_event(
+                        meeting.google_calendar_event_id,
+                        draft,
+                    )
+            except GoogleCalendarError:
+                await message.answer(
+                    "Не удалось обновить Google Календарь. Перенос не сохранен.",
+                    reply_markup=admin_menu(),
+                )
+                await state.clear()
+                return
+
         await request_repo.reschedule(
             request=request,
             start_at=start_at,
@@ -318,7 +386,14 @@ async def choose_reschedule_slot(
 
     await state.clear()
     if user is not None:
-        await bot.send_message(user.telegram_id, _user_status_message(RequestStatus.RESCHEDULED, start_at))
+        await bot.send_message(
+            user.telegram_id,
+            _user_status_message(
+                RequestStatus.RESCHEDULED,
+                start_at,
+                google_synced=settings.google_calendar_enabled,
+            ),
+        )
 
     await message.answer(
         f"Заявка #{request_id} перенесена на {start_at.strftime('%d.%m.%Y %H:%M')}.",
@@ -375,21 +450,58 @@ def _admin_request_message(request) -> str:
     )
 
 
-def _user_status_message(status: RequestStatus, start_at) -> str:
+async def _create_google_event(settings: Settings, request) -> str:
+    busy_intervals = await GoogleCalendarClient.from_settings(settings).list_busy_intervals(
+        request.start_at,
+        request.end_at,
+    )
+    if busy_intervals:
+        raise GoogleCalendarError("Google Calendar slot is busy.")
+
+    return await GoogleCalendarClient.from_settings(settings).create_event(
+        _google_event_draft(request, request.start_at, request.end_at)
+    )
+
+
+def _google_event_draft(request, start_at: datetime, end_at: datetime) -> CalendarEventDraft:
+    return CalendarEventDraft(
+        title=request.description,
+        description=(
+            f"MeetMaster\n"
+            f"Заявка: #{request.id}\n"
+            f"Email участника: {request.email}"
+        ),
+        start_at=start_at,
+        end_at=end_at,
+        attendee_email=request.email,
+    )
+
+
+def _user_status_message(status: RequestStatus, start_at, google_synced: bool = False) -> str:
     if status == RequestStatus.APPROVED:
+        calendar_text = (
+            "Встреча добавлена в Google Календарь."
+            if google_synced
+            else "Добавление в Google Календарь будет подключено следующим этапом."
+        )
         return (
             "Ваша заявка подтверждена.\n\n"
             f"Дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            "Добавление в Google Календарь будет подключено следующим этапом."
+            f"{calendar_text}"
         )
     if status == RequestStatus.DECLINED:
         return "Ваша заявка отклонена. Можно выбрать другой слот."
     if status == RequestStatus.CANCELLED:
         return "Ваша заявка отменена администратором."
     if status == RequestStatus.RESCHEDULED:
+        calendar_text = (
+            "Google Календарь обновлен."
+            if google_synced
+            else "Обновление Google Календаря будет подключено следующим этапом."
+        )
         return (
             "Ваша встреча перенесена администратором.\n\n"
             f"Новая дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            "Обновление Google Календаря будет подключено следующим этапом."
+            f"{calendar_text}"
         )
     return "Статус вашей заявки изменен."

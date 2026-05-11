@@ -33,6 +33,35 @@ python -m compileall app tests
 .\.venv\Scripts\python -m app.tools.check_telegram
 ```
 
+## Подключение Google Календаря
+
+Google-синхронизация выключена, пока не подготовлен OAuth:
+
+```env
+GOOGLE_CALENDAR_ENABLED=false
+```
+
+Чтобы подготовить OAuth локально:
+
+1. В Google Cloud включить Google Calendar API.
+2. Создать OAuth Client для Desktop app.
+3. Скачать JSON-файл и положить его сюда: `credentials/google_client_secret.json`.
+4. Запустить:
+
+```powershell
+.\.venv\Scripts\python -m app.tools.google_oauth_setup
+```
+
+5. Войти в Google-аккаунт календаря и разрешить доступ.
+6. После появления `credentials/google_token.json` включить синхронизацию:
+
+```env
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=primary
+```
+
+Папка `credentials/` добавлена в `.gitignore`. Эти файлы нельзя отправлять в чат или GitHub.
+
 ## Временный локальный запуск для проверки в Telegram
 
 Основной бот работает через aiogram. Если на Windows есть сетевой таймаут `aiohttp`, можно проверить пользовательский сценарий через временный локальный runner:
