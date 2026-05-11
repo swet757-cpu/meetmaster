@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,6 +93,31 @@ class BookingRequestRepository:
         )
         return list(result.scalars().all())
 
+    async def list_by_user(self, user_id: int) -> list[BookingRequest]:
+        result = await self.session.execute(
+            select(BookingRequest)
+            .where(BookingRequest.user_id == user_id)
+            .order_by(BookingRequest.start_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def list_blocking_for_day(self, day: date) -> list[BookingRequest]:
+        day_start = datetime.combine(day, time.min)
+        day_end = datetime.combine(day, time.max)
+        blocking_statuses = (
+            RequestStatus.PENDING_APPROVAL.value,
+            RequestStatus.APPROVED.value,
+            RequestStatus.RESCHEDULED.value,
+        )
+        result = await self.session.execute(
+            select(BookingRequest)
+            .where(BookingRequest.start_at >= day_start)
+            .where(BookingRequest.start_at <= day_end)
+            .where(BookingRequest.status.in_(blocking_statuses))
+            .order_by(BookingRequest.start_at)
+        )
+        return list(result.scalars().all())
+
     async def change_status(
         self,
         request: BookingRequest,
@@ -182,4 +207,3 @@ class SettingsRepository:
     async def get(self, key: str) -> Setting | None:
         result = await self.session.execute(select(Setting).where(Setting.key == key))
         return result.scalar_one_or_none()
-

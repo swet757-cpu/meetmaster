@@ -1,7 +1,12 @@
 from datetime import date, datetime
 import unittest
 
-from app.services.slot_service import BookingSettings, TimeInterval, generate_slots
+from app.services.slot_service import (
+    BookingSettings,
+    TimeInterval,
+    available_booking_dates,
+    generate_slots,
+)
 
 
 class SlotServiceTest(unittest.TestCase):
@@ -77,7 +82,19 @@ class SlotServiceTest(unittest.TestCase):
         self.assertNotIn("10:30", starts)
         self.assertIn("10:45", starts)
 
+    def test_available_booking_dates_exclude_weekends_and_closed_days(self) -> None:
+        dates = available_booking_dates(
+            now=datetime(2026, 5, 11, 9, 0),
+            closed_dates={date(2026, 5, 13)},
+            settings=self.settings,
+            days_ahead=7,
+        )
+
+        self.assertNotIn(date(2026, 5, 13), dates)
+        self.assertNotIn(date(2026, 5, 16), dates)
+        self.assertNotIn(date(2026, 5, 17), dates)
+        self.assertIn(date(2026, 5, 12), dates)
+
 
 if __name__ == "__main__":
     unittest.main()
-

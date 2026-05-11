@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
+from app.config.settings import Settings
+
 
 @dataclass(frozen=True)
 class BookingSettings:
@@ -27,6 +29,35 @@ class Slot:
 
 class SlotRuleError(ValueError):
     pass
+
+
+def booking_settings_from_app_settings(settings: Settings) -> BookingSettings:
+    return BookingSettings(
+        workday_start=settings.workday_start,
+        workday_end=settings.workday_end,
+        min_notice_days=settings.min_notice_days,
+        buffer_minutes=settings.buffer_minutes,
+        allowed_durations=settings.allowed_durations,
+    )
+
+
+def available_booking_dates(
+    now: datetime,
+    closed_dates: set[date] | None = None,
+    settings: BookingSettings | None = None,
+    days_ahead: int = 14,
+) -> list[date]:
+    settings = settings or BookingSettings()
+    closed_dates = closed_dates or set()
+    dates: list[date] = []
+    start_date = (now + timedelta(days=settings.min_notice_days)).date()
+
+    for offset in range(days_ahead + 1):
+        candidate = start_date + timedelta(days=offset)
+        if is_working_day(candidate, settings) and not is_closed_day(candidate, closed_dates):
+            dates.append(candidate)
+
+    return dates
 
 
 def is_working_day(target_date: date, settings: BookingSettings) -> bool:
@@ -91,4 +122,3 @@ def _overlaps_with_buffer(
         if slot.start < protected_end and slot.end > protected_start:
             return True
     return False
-

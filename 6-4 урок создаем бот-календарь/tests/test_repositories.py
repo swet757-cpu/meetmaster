@@ -89,6 +89,52 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(histories[-1].old_status, RequestStatus.PENDING_APPROVAL.value)
             self.assertEqual(histories[-1].new_status, RequestStatus.APPROVED.value)
 
+    async def test_list_by_user_and_blocking_for_day(self) -> None:
+        async with session_scope(self.session_factory) as session:
+            user_repo = UserRepository(session)
+            request_repo = BookingRequestRepository(session)
+            first_user = await user_repo.upsert_from_telegram(
+                telegram_id=2001,
+                first_name="First",
+                last_name=None,
+                username=None,
+            )
+            second_user = await user_repo.upsert_from_telegram(
+                telegram_id=2002,
+                first_name="Second",
+                last_name=None,
+                username=None,
+            )
+            first_request = await request_repo.create_pending(
+                user_id=first_user.id,
+                start_at=datetime(2026, 5, 13, 9, 0),
+                end_at=datetime(2026, 5, 13, 9, 30),
+                duration_minutes=30,
+                email="first@example.com",
+                description="Первая встреча",
+            )
+            second_request = await request_repo.create_pending(
+                user_id=second_user.id,
+                start_at=datetime(2026, 5, 13, 11, 0),
+                end_at=datetime(2026, 5, 13, 11, 30),
+                duration_minutes=30,
+                email="second@example.com",
+                description="Вторая встреча",
+            )
+            await request_repo.change_status(
+                request=second_request,
+                new_status=RequestStatus.CANCELLED,
+                comment="Отменено.",
+            )
+
+        async with session_scope(self.session_factory) as session:
+            request_repo = BookingRequestRepository(session)
+            user_requests = await request_repo.list_by_user(first_user.id)
+            blocking = await request_repo.list_blocking_for_day(date(2026, 5, 13))
+
+            self.assertEqual([request.id for request in user_requests], [first_request.id])
+            self.assertEqual([request.id for request in blocking], [first_request.id])
+
     async def test_closed_day_repository(self) -> None:
         target_day = date(2026, 5, 15)
 
@@ -118,4 +164,3 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
