@@ -1,9 +1,10 @@
 import asyncio
 from datetime import date, datetime
 import json
+from pathlib import Path
 import time
+import traceback
 import urllib.error
-import urllib.parse
 import urllib.request
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -25,15 +26,19 @@ MY_REQUESTS_TEXT = "Мои встречи"
 HELP_TEXT = "Помощь"
 CANCEL_TEXT = "Отмена"
 CONFIRM_TEXT = "Отправить заявку"
+ADMIN_REQUESTS_TEXT = "Заявки на согласовании"
 
 BOOK_ALIASES = {BOOK_TEXT, "Записаться на встречу", "/book"}
 MY_REQUESTS_ALIASES = {MY_REQUESTS_TEXT, "Мои заявки", "/requests"}
 HELP_ALIASES = {HELP_TEXT, "/help"}
 CANCEL_ALIASES = {CANCEL_TEXT, "Отменить"}
+ADMIN_REQUESTS_ALIASES = {ADMIN_REQUESTS_TEXT, "/admin_requests"}
 
 MAIN_MENU = [[BOOK_TEXT], [MY_REQUESTS_TEXT, HELP_TEXT]]
+ADMIN_MENU = [[ADMIN_REQUESTS_TEXT]]
 CANCEL_MENU = [[CANCEL_TEXT]]
 CONFIRM_MENU = [[CONFIRM_TEXT], [CANCEL_TEXT]]
+LOG_PATH = Path("local_data/local_test_bot_internal.log")
 
 
 class TelegramApi:
@@ -100,6 +105,13 @@ class TelegramApi:
         response = self.request("getUpdates", payload, timeout=35)
         return response.get("result", [])
 
+    def drop_pending_updates(self) -> int | None:
+        response = self.request("getUpdates", {"offset": -1, "timeout": 1}, timeout=10)
+        updates = response.get("result", [])
+        if not updates:
+            return None
+        return updates[-1]["update_id"] + 1
+
     def set_commands(self) -> None:
         self.request(
             "setMyCommands",
@@ -128,15 +140,34 @@ class LocalTestBot:
         self.states: dict[int, dict] = {}
 
     def run(self) -> None:
-        me = self.telegram.request("getMe").get("result", {})
-        self.telegram.set_commands()
-        print(f"LOCAL_TEST_BOT_OK=True username={me.get('username')}")
-        offset: int | None = None
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _log("LOCAL_TEST_BOT_STARTING")
+        try:
+            me = self.telegram.request("getMe", timeout=10).get("result", {})
+            _log(f"LOCAL_TEST_BOT_OK=True username={me.get('username')}")
+        except Exception as exc:
+            _log_exception("getMe failed", exc)
+
+        try:
+            self.telegram.set_commands()
+        except Exception as exc:
+            _log_exception("set commands failed", exc)
+
+        try:
+            offset = self.telegram.drop_pending_updates()
+        except Exception as exc:
+            _log_exception("drop pending updates failed", exc)
+            offset = None
+        _log(f"START_OFFSET={offset}")
         while True:
             try:
                 updates = self.telegram.get_updates(offset)
             except (urllib.error.URLError, TimeoutError) as exc:
-                print(f"Telegram network retry: {type(exc).__name__}")
+                _log(f"Telegram network retry: {type(exc).__name__}: {exc}")
+                time.sleep(3)
+                continue
+            except Exception as exc:
+                _log_exception("get_updates failed", exc)
                 time.sleep(3)
                 continue
 
@@ -144,10 +175,16 @@ class LocalTestBot:
                 offset = update["update_id"] + 1
                 message = update.get("message")
                 if message:
-                    asyncio.run(self.handle_message(message))
+                    try:
+                        asyncio.run(self.handle_message(message))
+                    except Exception as exc:
+                        _log_exception("handle_message failed", exc)
                 callback_query = update.get("callback_query")
                 if callback_query:
-                    asyncio.run(self.handle_callback_query(callback_query))
+                    try:
+                        asyncio.run(self.handle_callback_query(callback_query))
+                    except Exception as exc:
+                        _log_exception("handle_callback_query failed", exc)
 
     async def handle_message(self, message: dict) -> None:
         chat_id = message["chat"]["id"]
@@ -169,6 +206,17 @@ class LocalTestBot:
 
         if text == "/my_id":
             self.telegram.send_message(chat_id, f"Ваш Telegram ID: {user_id}", MAIN_MENU)
+            return
+
+        if text == "/admin":
+            if user_id not in self.settings.admin_telegram_ids:
+                self.telegram.send_message(chat_id, "Это действие доступно только администратору.", MAIN_MENU)
+                return
+            self.telegram.send_message(chat_id, "Админ-меню MeetMaster.", ADMIN_MENU)
+            return
+
+        if text in ADMIN_REQUESTS_ALIASES:
+            await self.show_pending_requests(chat_id, user_id)
             return
 
         if text in CANCEL_ALIASES:
@@ -418,6 +466,26 @@ class LocalTestBot:
             )
         self.telegram.send_message(chat_id, "\n".join(lines), MAIN_MENU)
 
+    async def show_pending_requests(self, chat_id: int, user_id: int) -> None:
+        if user_id not in self.settings.admin_telegram_ids:
+            self.telegram.send_message(chat_id, "Это действие доступно только администратору.", MAIN_MENU)
+            return
+
+        async with session_scope(self.session_factory) as session:
+            requests = await BookingRequestRepository(session).list_pending()
+
+        if not requests:
+            self.telegram.send_message(chat_id, "Заявок на согласовании нет.", ADMIN_MENU)
+            return
+
+        self.telegram.send_message(chat_id, "Заявки на согласовании:", ADMIN_MENU)
+        for request in requests[:10]:
+            self.telegram.send_message(
+                chat_id,
+                _admin_request_message(request),
+                inline_keyboard=_admin_request_actions_keyboard(request.id),
+            )
+
     def notify_admins(self, request_id: int, start_at: datetime, state: dict) -> None:
         text = (
             "Новая заявка на встречу:\n\n"
@@ -427,14 +495,18 @@ class LocalTestBot:
             f"Длительность: {state['duration']} минут\n"
             f"Email: {state['email']}\n"
             f"Описание: {state['description']}\n\n"
-            "Подтверждение добавим следующим этапом."
+            "Выберите действие кнопкой ниже."
         )
         for admin_id in self.settings.admin_telegram_ids:
-            self.telegram.send_message(
-                admin_id,
-                text,
-                inline_keyboard=_admin_request_actions_keyboard(request_id),
-            )
+            try:
+                self.telegram.send_message(
+                    admin_id,
+                    text,
+                    inline_keyboard=_admin_request_actions_keyboard(request_id),
+                )
+                _log(f"ADMIN_NOTIFICATION_SENT request_id={request_id}")
+            except Exception as exc:
+                _log_exception(f"admin notification failed request_id={request_id}", exc)
 
 
 def _parse_date(value: str) -> date | None:
@@ -480,6 +552,18 @@ def _status_label(status: RequestStatus) -> str:
     return labels.get(status, status.value)
 
 
+def _admin_request_message(request) -> str:
+    return (
+        "Заявка на встречу:\n\n"
+        f"Заявка: #{request.id}\n"
+        f"Дата: {request.start_at.strftime('%d.%m.%Y')}\n"
+        f"Время: {request.start_at.strftime('%H:%M')}\n"
+        f"Длительность: {request.duration_minutes} минут\n"
+        f"Email: {request.email}\n"
+        f"Описание: {request.description}"
+    )
+
+
 def _user_status_message(status: RequestStatus, start_at: datetime) -> str:
     if status == RequestStatus.APPROVED:
         return (
@@ -492,6 +576,24 @@ def _user_status_message(status: RequestStatus, start_at: datetime) -> str:
     if status == RequestStatus.CANCELLED:
         return "Ваша заявка отменена администратором."
     return "Статус вашей заявки изменен."
+
+
+def _log(message: str) -> None:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"{timestamp} {message}"
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with LOG_PATH.open("a", encoding="utf-8") as log_file:
+        log_file.write(line + "\n")
+    try:
+        print(line, flush=True)
+    except Exception:
+        pass
+
+
+def _log_exception(context: str, exc: Exception) -> None:
+    _log(f"{context}: {type(exc).__name__}: {exc}")
+    with LOG_PATH.open("a", encoding="utf-8") as log_file:
+        traceback.print_exc(file=log_file)
 
 
 def main() -> None:

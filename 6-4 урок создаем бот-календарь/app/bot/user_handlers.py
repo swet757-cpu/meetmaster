@@ -346,7 +346,7 @@ async def _notify_admins(
         f"Длительность: {duration} минут\n"
         f"Email: {email}\n"
         f"Описание: {description}\n\n"
-        "Подтверждение, перенос и отклонение будут добавлены в админ-сценарии."
+        "Выберите действие кнопкой ниже."
     )
     for admin_id in settings.admin_telegram_ids:
         await bot.send_message(

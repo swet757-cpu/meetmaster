@@ -3,7 +3,13 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.bot.keyboards import APPROVE_ACTION, CANCEL_ACTION, DECLINE_ACTION, admin_menu
+from app.bot.keyboards import (
+    APPROVE_ACTION,
+    CANCEL_ACTION,
+    DECLINE_ACTION,
+    admin_menu,
+    admin_request_actions_keyboard,
+)
 from app.bot.messages import ADMIN_ONLY
 from app.config.settings import Settings
 from app.db.models import RequestStatus
@@ -44,13 +50,12 @@ async def pending_requests(
         await message.answer("Заявок на согласовании нет.", reply_markup=admin_menu())
         return
 
-    lines = ["Заявки на согласовании:"]
+    await message.answer("Заявки на согласовании:", reply_markup=admin_menu())
     for request in requests[:10]:
-        lines.append(
-            f"#{request.id}: {request.start_at.strftime('%d.%m.%Y %H:%M')}, "
-            f"{request.duration_minutes} минут, {request.email}"
+        await message.answer(
+            _admin_request_message(request),
+            reply_markup=admin_request_actions_keyboard(request.id),
         )
-    await message.answer("\n".join(lines), reply_markup=admin_menu())
 
 
 @router.callback_query(lambda query: bool(query.data and query.data.startswith("request:")))
@@ -130,6 +135,18 @@ def _status_label(status: RequestStatus) -> str:
     return labels.get(status, status.value)
 
 
+def _admin_request_message(request) -> str:
+    return (
+        "Заявка на встречу:\n\n"
+        f"Заявка: #{request.id}\n"
+        f"Дата: {request.start_at.strftime('%d.%m.%Y')}\n"
+        f"Время: {request.start_at.strftime('%H:%M')}\n"
+        f"Длительность: {request.duration_minutes} минут\n"
+        f"Email: {request.email}\n"
+        f"Описание: {request.description}"
+    )
+
+
 def _user_status_message(status: RequestStatus, start_at) -> str:
     if status == RequestStatus.APPROVED:
         return (
@@ -142,4 +159,3 @@ def _user_status_message(status: RequestStatus, start_at) -> str:
     if status == RequestStatus.CANCELLED:
         return "Ваша заявка отменена администратором."
     return "Статус вашей заявки изменен."
-
