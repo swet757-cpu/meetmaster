@@ -1,0 +1,2 @@
+"""MeetMaster application package."""
+
