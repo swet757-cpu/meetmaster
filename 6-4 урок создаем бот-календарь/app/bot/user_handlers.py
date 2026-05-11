@@ -23,6 +23,7 @@ from app.bot.keyboards import (
 from app.bot.messages import HELP, UNKNOWN_ACTION, WELCOME
 from app.bot.states import BookingFlow
 from app.config.settings import Settings
+from app.db.models import RequestStatus
 from app.db.repositories import BookingRequestRepository, ClosedDayRepository, UserRepository
 from app.db.session import session_scope
 from app.services.email_validator import is_valid_email
@@ -294,7 +295,7 @@ async def my_requests(
     for request in requests[:10]:
         lines.append(
             f"#{request.id}: {request.start_at.strftime('%d.%m.%Y %H:%M')}, "
-            f"{request.duration_minutes} минут, статус: {request.status}"
+            f"{request.duration_minutes} минут, статус: {_status_label(request.status)}"
         )
 
     await message.answer("\n".join(lines), reply_markup=main_menu())
@@ -324,6 +325,17 @@ def _parse_time(value: str):
         return datetime.strptime(value.strip(), "%H:%M").time()
     except ValueError:
         return None
+
+
+def _status_label(status: str) -> str:
+    labels = {
+        RequestStatus.PENDING_APPROVAL.value: "на согласовании",
+        RequestStatus.APPROVED.value: "подтверждена",
+        RequestStatus.DECLINED.value: "отклонена",
+        RequestStatus.CANCELLED.value: "отменена",
+        RequestStatus.RESCHEDULED.value: "перенесена",
+    }
+    return labels.get(status, status)
 
 
 async def _notify_admins(

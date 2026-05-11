@@ -27,15 +27,18 @@ HELP_TEXT = "Помощь"
 CANCEL_TEXT = "Отмена"
 CONFIRM_TEXT = "Отправить заявку"
 ADMIN_REQUESTS_TEXT = "Заявки на согласовании"
+ACTIVE_MEETINGS_TEXT = "Активные встречи"
+RESCHEDULE_ACTION = "reschedule"
 
 BOOK_ALIASES = {BOOK_TEXT, "Записаться на встречу", "/book"}
 MY_REQUESTS_ALIASES = {MY_REQUESTS_TEXT, "Мои заявки", "/requests"}
 HELP_ALIASES = {HELP_TEXT, "/help"}
 CANCEL_ALIASES = {CANCEL_TEXT, "Отменить"}
 ADMIN_REQUESTS_ALIASES = {ADMIN_REQUESTS_TEXT, "/admin_requests"}
+ACTIVE_MEETINGS_ALIASES = {ACTIVE_MEETINGS_TEXT, "/admin_active"}
 
 MAIN_MENU = [[BOOK_TEXT], [MY_REQUESTS_TEXT, HELP_TEXT]]
-ADMIN_MENU = [[ADMIN_REQUESTS_TEXT]]
+ADMIN_MENU = [[ADMIN_REQUESTS_TEXT], [ACTIVE_MEETINGS_TEXT]]
 CANCEL_MENU = [[CANCEL_TEXT]]
 CONFIRM_MENU = [[CONFIRM_TEXT], [CANCEL_TEXT]]
 LOG_PATH = Path("local_data/local_test_bot_internal.log")
@@ -122,6 +125,9 @@ class TelegramApi:
                     {"command": "requests", "description": "Мои встречи"},
                     {"command": "help", "description": "Помощь"},
                     {"command": "my_id", "description": "Мой Telegram ID"},
+                    {"command": "admin", "description": "Админ-меню"},
+                    {"command": "admin_requests", "description": "Заявки на согласовании"},
+                    {"command": "admin_active", "description": "Активные встречи"},
                 ]
             },
             timeout=20,
@@ -219,6 +225,10 @@ class LocalTestBot:
             await self.show_pending_requests(chat_id, user_id)
             return
 
+        if text in ACTIVE_MEETINGS_ALIASES:
+            await self.show_active_meetings(chat_id, user_id)
+            return
+
         if text in CANCEL_ALIASES:
             self.states.pop(chat_id, None)
             self.telegram.send_message(chat_id, "Создание заявки отменено.", MAIN_MENU)
@@ -235,7 +245,11 @@ class LocalTestBot:
         state = self.states.get(chat_id, {})
         step = state.get("step")
 
-        if text in BOOK_ALIASES:
+        if step == "admin_reschedule_date":
+            await self.choose_admin_reschedule_date(chat_id, user_id, text)
+        elif step == "admin_reschedule_slot":
+            await self.choose_admin_reschedule_slot(chat_id, user_id, text)
+        elif text in BOOK_ALIASES:
             await self.start_booking(chat_id)
         elif step == "date":
             await self.choose_date(chat_id, text)
@@ -269,6 +283,44 @@ class LocalTestBot:
             "cancel": RequestStatus.CANCELLED,
         }
         new_status = status_by_action.get(action)
+        if action == RESCHEDULE_ACTION:
+            async with session_scope(self.session_factory) as session:
+                request = await BookingRequestRepository(session).get_by_id(request_id)
+                closed_days = await ClosedDayRepository(session).list_all()
+            if request is None:
+                self.telegram.answer_callback_query(callback_query["id"], "Заявка не найдена.")
+                return
+            if request.status not in {
+                RequestStatus.PENDING_APPROVAL.value,
+                RequestStatus.APPROVED.value,
+                RequestStatus.RESCHEDULED.value,
+            }:
+                self.telegram.answer_callback_query(callback_query["id"], "Эту заявку уже нельзя перенести.")
+                return
+
+            dates = available_booking_dates(
+                now=datetime.now(),
+                closed_dates={item.day for item in closed_days},
+                settings=booking_settings_from_app_settings(self.settings),
+            )
+            if not dates:
+                self.telegram.answer_callback_query(callback_query["id"], "Нет доступных дат для переноса.")
+                return
+
+            chat_id = callback_query["message"]["chat"]["id"]
+            self.states[chat_id] = {
+                "step": "admin_reschedule_date",
+                "request_id": request_id,
+                "duration": request.duration_minutes,
+            }
+            self.telegram.send_message(
+                chat_id,
+                f"Выберите новую дату для заявки #{request_id}.",
+                [[item.strftime("%d.%m.%Y")] for item in dates] + CANCEL_MENU,
+            )
+            self.telegram.answer_callback_query(callback_query["id"], "Выберите дату.")
+            return
+
         if new_status is None:
             self.telegram.answer_callback_query(callback_query["id"], "Действие пока не поддерживается.")
             return
@@ -280,8 +332,20 @@ class LocalTestBot:
             if request is None:
                 self.telegram.answer_callback_query(callback_query["id"], "Заявка не найдена.")
                 return
-            if request.status != RequestStatus.PENDING_APPROVAL.value:
-                self.telegram.answer_callback_query(callback_query["id"], "Заявка уже обработана.")
+            allowed_statuses = {
+                "approve": {RequestStatus.PENDING_APPROVAL.value},
+                "decline": {RequestStatus.PENDING_APPROVAL.value},
+                "cancel": {
+                    RequestStatus.PENDING_APPROVAL.value,
+                    RequestStatus.APPROVED.value,
+                    RequestStatus.RESCHEDULED.value,
+                },
+            }
+            if request.status not in allowed_statuses[action]:
+                self.telegram.answer_callback_query(
+                    callback_query["id"],
+                    "Это действие недоступно для текущего статуса заявки.",
+                )
                 return
             await request_repo.change_status(
                 request=request,
@@ -462,9 +526,102 @@ class LocalTestBot:
         for request in requests[:10]:
             lines.append(
                 f"#{request.id}: {request.start_at.strftime('%d.%m.%Y %H:%M')}, "
-                f"{request.duration_minutes} минут, статус: {request.status}"
+                f"{request.duration_minutes} минут, статус: {_status_label(request.status)}"
             )
         self.telegram.send_message(chat_id, "\n".join(lines), MAIN_MENU)
+
+    async def choose_admin_reschedule_date(self, chat_id: int, user_id: int, text: str) -> None:
+        if user_id not in self.settings.admin_telegram_ids:
+            self.states.pop(chat_id, None)
+            self.telegram.send_message(chat_id, "Это действие доступно только администратору.", MAIN_MENU)
+            return
+
+        if text in CANCEL_ALIASES:
+            self.states.pop(chat_id, None)
+            self.telegram.send_message(chat_id, "Перенос заявки отменен.", ADMIN_MENU)
+            return
+
+        selected_date = _parse_date(text)
+        if selected_date is None:
+            self.telegram.send_message(chat_id, "Выберите дату кнопкой из списка.", CANCEL_MENU)
+            return
+
+        state = self.states[chat_id]
+        request_id = int(state["request_id"])
+        duration = int(state["duration"])
+        async with session_scope(self.session_factory) as session:
+            blocking_requests = await BookingRequestRepository(session).list_blocking_for_day(selected_date)
+
+        slots = generate_slots(
+            target_date=selected_date,
+            duration_minutes=duration,
+            now=datetime.now(),
+            blocked_intervals=[
+                TimeInterval(start=request.start_at, end=request.end_at)
+                for request in blocking_requests
+                if request.id != request_id
+            ],
+            settings=booking_settings_from_app_settings(self.settings),
+        )
+        if not slots:
+            self.telegram.send_message(chat_id, "На выбранную дату нет свободных слотов. Выберите другую дату.")
+            return
+
+        state["step"] = "admin_reschedule_slot"
+        state["date"] = selected_date.isoformat()
+        state["slots"] = {slot.start.strftime("%H:%M"): slot for slot in slots}
+        self.telegram.send_message(
+            chat_id,
+            "Выберите новое время.",
+            [[slot.start.strftime("%H:%M")] for slot in slots] + CANCEL_MENU,
+        )
+
+    async def choose_admin_reschedule_slot(self, chat_id: int, user_id: int, text: str) -> None:
+        if user_id not in self.settings.admin_telegram_ids:
+            self.states.pop(chat_id, None)
+            self.telegram.send_message(chat_id, "Это действие доступно только администратору.", MAIN_MENU)
+            return
+
+        if text in CANCEL_ALIASES:
+            self.states.pop(chat_id, None)
+            self.telegram.send_message(chat_id, "Перенос заявки отменен.", ADMIN_MENU)
+            return
+
+        state = self.states[chat_id]
+        slot = state.get("slots", {}).get(text)
+        if slot is None:
+            self.telegram.send_message(chat_id, "Выберите время кнопкой из списка.", CANCEL_MENU)
+            return
+
+        request_id = int(state["request_id"])
+        async with session_scope(self.session_factory) as session:
+            request_repo = BookingRequestRepository(session)
+            user_repo = UserRepository(session)
+            request = await request_repo.get_by_id(request_id)
+            if request is None:
+                self.states.pop(chat_id, None)
+                self.telegram.send_message(chat_id, "Заявка не найдена.", ADMIN_MENU)
+                return
+
+            await request_repo.reschedule(
+                request=request,
+                start_at=slot.start,
+                end_at=slot.end,
+                comment="Администратор перенес встречу.",
+            )
+            stored_user = await user_repo.get_by_id(request.user_id)
+
+        self.states.pop(chat_id, None)
+        if stored_user is not None:
+            self.telegram.send_message(
+                stored_user.telegram_id,
+                _user_status_message(RequestStatus.RESCHEDULED, slot.start),
+            )
+        self.telegram.send_message(
+            chat_id,
+            f"Заявка #{request_id} перенесена на {slot.start.strftime('%d.%m.%Y %H:%M')}.",
+            ADMIN_MENU,
+        )
 
     async def show_pending_requests(self, chat_id: int, user_id: int) -> None:
         if user_id not in self.settings.admin_telegram_ids:
@@ -484,6 +641,26 @@ class LocalTestBot:
                 chat_id,
                 _admin_request_message(request),
                 inline_keyboard=_admin_request_actions_keyboard(request.id),
+            )
+
+    async def show_active_meetings(self, chat_id: int, user_id: int) -> None:
+        if user_id not in self.settings.admin_telegram_ids:
+            self.telegram.send_message(chat_id, "Это действие доступно только администратору.", MAIN_MENU)
+            return
+
+        async with session_scope(self.session_factory) as session:
+            requests = await BookingRequestRepository(session).list_active()
+
+        if not requests:
+            self.telegram.send_message(chat_id, "Активных встреч нет.", ADMIN_MENU)
+            return
+
+        self.telegram.send_message(chat_id, "Активные встречи:", ADMIN_MENU)
+        for request in requests[:10]:
+            self.telegram.send_message(
+                chat_id,
+                _admin_request_message(request),
+                inline_keyboard=_admin_active_meeting_actions_keyboard(request.id),
             )
 
     def notify_admins(self, request_id: int, start_at: datetime, state: dict) -> None:
@@ -539,17 +716,32 @@ def _admin_request_actions_keyboard(request_id: int) -> list[list[dict]]:
             {"text": "Подтвердить", "callback_data": f"request:approve:{request_id}"},
             {"text": "Отклонить", "callback_data": f"request:decline:{request_id}"},
         ],
-        [{"text": "Отменить", "callback_data": f"request:cancel:{request_id}"}],
+        [
+            {"text": "Отменить", "callback_data": f"request:cancel:{request_id}"},
+            {"text": "Перенести", "callback_data": f"request:{RESCHEDULE_ACTION}:{request_id}"},
+        ],
     ]
 
 
-def _status_label(status: RequestStatus) -> str:
+def _admin_active_meeting_actions_keyboard(request_id: int) -> list[list[dict]]:
+    return [
+        [
+            {"text": "Перенести", "callback_data": f"request:{RESCHEDULE_ACTION}:{request_id}"},
+            {"text": "Отменить", "callback_data": f"request:cancel:{request_id}"},
+        ],
+    ]
+
+
+def _status_label(status: RequestStatus | str) -> str:
+    value = status.value if isinstance(status, RequestStatus) else status
     labels = {
-        RequestStatus.APPROVED: "подтверждена",
-        RequestStatus.DECLINED: "отклонена",
-        RequestStatus.CANCELLED: "отменена",
+        RequestStatus.PENDING_APPROVAL.value: "на согласовании",
+        RequestStatus.APPROVED.value: "подтверждена",
+        RequestStatus.DECLINED.value: "отклонена",
+        RequestStatus.CANCELLED.value: "отменена",
+        RequestStatus.RESCHEDULED.value: "перенесена",
     }
-    return labels.get(status, status.value)
+    return labels.get(value, value)
 
 
 def _admin_request_message(request) -> str:
@@ -559,6 +751,7 @@ def _admin_request_message(request) -> str:
         f"Дата: {request.start_at.strftime('%d.%m.%Y')}\n"
         f"Время: {request.start_at.strftime('%H:%M')}\n"
         f"Длительность: {request.duration_minutes} минут\n"
+        f"Статус: {_status_label(request.status)}\n"
         f"Email: {request.email}\n"
         f"Описание: {request.description}"
     )
@@ -575,6 +768,12 @@ def _user_status_message(status: RequestStatus, start_at: datetime) -> str:
         return "Ваша заявка отклонена. Можно выбрать другой слот."
     if status == RequestStatus.CANCELLED:
         return "Ваша заявка отменена администратором."
+    if status == RequestStatus.RESCHEDULED:
+        return (
+            "Ваша встреча перенесена администратором.\n\n"
+            f"Новая дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+            "Обновление Google Календаря будет подключено следующим этапом."
+        )
     return "Статус вашей заявки изменен."
 
 

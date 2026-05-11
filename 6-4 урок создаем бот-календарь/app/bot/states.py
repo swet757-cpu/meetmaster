@@ -9,3 +9,7 @@ class BookingFlow(StatesGroup):
     entering_description = State()
     confirming = State()
 
+
+class AdminRescheduleFlow(StatesGroup):
+    choosing_date = State()
+    choosing_slot = State()

@@ -97,6 +97,18 @@ class BookingRequestRepository:
         )
         return list(result.scalars().all())
 
+    async def list_active(self) -> list[BookingRequest]:
+        active_statuses = (
+            RequestStatus.APPROVED.value,
+            RequestStatus.RESCHEDULED.value,
+        )
+        result = await self.session.execute(
+            select(BookingRequest)
+            .where(BookingRequest.status.in_(active_statuses))
+            .order_by(BookingRequest.start_at)
+        )
+        return list(result.scalars().all())
+
     async def list_by_user(self, user_id: int) -> list[BookingRequest]:
         result = await self.session.execute(
             select(BookingRequest)
@@ -130,6 +142,27 @@ class BookingRequestRepository:
     ) -> BookingRequest:
         old_status = request.status
         request.status = new_status.value
+        request.updated_at = datetime.utcnow()
+        await self.add_status_history(
+            booking_request_id=request.id,
+            old_status=old_status,
+            new_status=request.status,
+            comment=comment,
+        )
+        await self.session.flush()
+        return request
+
+    async def reschedule(
+        self,
+        request: BookingRequest,
+        start_at: datetime,
+        end_at: datetime,
+        comment: str | None = None,
+    ) -> BookingRequest:
+        old_status = request.status
+        request.start_at = start_at
+        request.end_at = end_at
+        request.status = RequestStatus.RESCHEDULED.value
         request.updated_at = datetime.utcnow()
         await self.add_status_history(
             booking_request_id=request.id,

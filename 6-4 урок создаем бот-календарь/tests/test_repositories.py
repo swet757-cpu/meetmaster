@@ -89,6 +89,42 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(histories[-1].old_status, RequestStatus.PENDING_APPROVAL.value)
             self.assertEqual(histories[-1].new_status, RequestStatus.APPROVED.value)
 
+    async def test_reschedule_booking_request(self) -> None:
+        async with session_scope(self.session_factory) as session:
+            user = await UserRepository(session).upsert_from_telegram(
+                telegram_id=1003,
+                first_name="User",
+                last_name=None,
+                username=None,
+            )
+            request_repo = BookingRequestRepository(session)
+            request = await request_repo.create_pending(
+                user_id=user.id,
+                start_at=datetime(2026, 5, 13, 10, 0),
+                end_at=datetime(2026, 5, 13, 10, 30),
+                duration_minutes=30,
+                email="client@example.com",
+                description="Тест",
+            )
+            await request_repo.reschedule(
+                request=request,
+                start_at=datetime(2026, 5, 14, 11, 0),
+                end_at=datetime(2026, 5, 14, 11, 30),
+                comment="Перенесено администратором.",
+            )
+
+        async with session_scope(self.session_factory) as session:
+            request = await BookingRequestRepository(session).get_by_id(1)
+            self.assertIsNotNone(request)
+            self.assertEqual(request.status, RequestStatus.RESCHEDULED.value)
+            self.assertEqual(request.start_at, datetime(2026, 5, 14, 11, 0))
+            self.assertEqual(request.end_at, datetime(2026, 5, 14, 11, 30))
+
+            histories = (await session.execute(select(StatusHistory))).scalars().all()
+            self.assertEqual(len(histories), 2)
+            self.assertEqual(histories[-1].old_status, RequestStatus.PENDING_APPROVAL.value)
+            self.assertEqual(histories[-1].new_status, RequestStatus.RESCHEDULED.value)
+
     async def test_list_by_user_and_blocking_for_day(self) -> None:
         async with session_scope(self.session_factory) as session:
             user_repo = UserRepository(session)
@@ -134,6 +170,60 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual([request.id for request in user_requests], [first_request.id])
             self.assertEqual([request.id for request in blocking], [first_request.id])
+
+    async def test_list_active_booking_requests(self) -> None:
+        async with session_scope(self.session_factory) as session:
+            user = await UserRepository(session).upsert_from_telegram(
+                telegram_id=2003,
+                first_name="Active",
+                last_name=None,
+                username=None,
+            )
+            request_repo = BookingRequestRepository(session)
+            pending_request = await request_repo.create_pending(
+                user_id=user.id,
+                start_at=datetime(2026, 5, 13, 9, 0),
+                end_at=datetime(2026, 5, 13, 9, 30),
+                duration_minutes=30,
+                email="pending@example.com",
+                description="На согласовании",
+            )
+            approved_request = await request_repo.create_pending(
+                user_id=user.id,
+                start_at=datetime(2026, 5, 13, 10, 0),
+                end_at=datetime(2026, 5, 13, 10, 30),
+                duration_minutes=30,
+                email="approved@example.com",
+                description="Подтвержденная",
+            )
+            rescheduled_request = await request_repo.create_pending(
+                user_id=user.id,
+                start_at=datetime(2026, 5, 13, 11, 0),
+                end_at=datetime(2026, 5, 13, 11, 30),
+                duration_minutes=30,
+                email="rescheduled@example.com",
+                description="Перенесенная",
+            )
+            await request_repo.change_status(
+                request=pending_request,
+                new_status=RequestStatus.CANCELLED,
+                comment="Отменено.",
+            )
+            await request_repo.change_status(
+                request=approved_request,
+                new_status=RequestStatus.APPROVED,
+                comment="Подтверждено.",
+            )
+            await request_repo.reschedule(
+                request=rescheduled_request,
+                start_at=datetime(2026, 5, 14, 12, 0),
+                end_at=datetime(2026, 5, 14, 12, 30),
+                comment="Перенесено.",
+            )
+
+        async with session_scope(self.session_factory) as session:
+            active = await BookingRequestRepository(session).list_active()
+            self.assertEqual([request.id for request in active], [approved_request.id, rescheduled_request.id])
 
     async def test_closed_day_repository(self) -> None:
         target_day = date(2026, 5, 15)

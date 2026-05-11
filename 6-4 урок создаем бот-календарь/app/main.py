@@ -19,8 +19,8 @@ async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher["settings"] = settings
     dispatcher["session_factory"] = create_app_session_factory(settings)
-    dispatcher.include_router(user_router)
     dispatcher.include_router(admin_router)
+    dispatcher.include_router(user_router)
 
     await setup_bot_commands(bot)
     await dispatcher.start_polling(bot)

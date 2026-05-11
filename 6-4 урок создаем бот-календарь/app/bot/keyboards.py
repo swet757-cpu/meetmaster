@@ -12,6 +12,7 @@ CONFIRM_TEXT = "Отправить заявку"
 APPROVE_ACTION = "approve"
 DECLINE_ACTION = "decline"
 CANCEL_ACTION = "cancel"
+RESCHEDULE_ACTION = "reschedule"
 
 BOOK_ALIASES = {BOOK_TEXT, "Записаться на встречу", "/book"}
 MY_REQUESTS_ALIASES = {MY_REQUESTS_TEXT, "Мои заявки", "/requests"}
@@ -34,11 +35,29 @@ def admin_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Заявки на согласовании")],
+            [KeyboardButton(text="Активные встречи")],
             [KeyboardButton(text="Настройки"), KeyboardButton(text="Статистика")],
             [KeyboardButton(text="Закрыть день"), KeyboardButton(text="Открыть день")],
         ],
         resize_keyboard=True,
         input_field_placeholder="Админ-меню",
+    )
+
+
+def admin_active_meeting_actions_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Перенести",
+                    callback_data=f"request:{RESCHEDULE_ACTION}:{request_id}",
+                ),
+                InlineKeyboardButton(
+                    text="Отменить",
+                    callback_data=f"request:{CANCEL_ACTION}:{request_id}",
+                ),
+            ],
+        ]
     )
 
 
@@ -108,7 +127,11 @@ def admin_request_actions_keyboard(request_id: int) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="Отменить",
                     callback_data=f"request:{CANCEL_ACTION}:{request_id}",
-                )
+                ),
+                InlineKeyboardButton(
+                    text="Перенести",
+                    callback_data=f"request:{RESCHEDULE_ACTION}:{request_id}",
+                ),
             ],
         ]
     )
