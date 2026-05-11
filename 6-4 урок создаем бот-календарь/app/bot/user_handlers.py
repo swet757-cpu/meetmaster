@@ -7,8 +7,11 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot.keyboards import (
-    CANCEL_TEXT,
+    BOOK_ALIASES,
+    CANCEL_ALIASES,
     CONFIRM_TEXT,
+    HELP_ALIASES,
+    MY_REQUESTS_ALIASES,
     cancel_keyboard,
     confirm_keyboard,
     dates_keyboard,
@@ -47,18 +50,20 @@ async def my_telegram_id(message: Message) -> None:
     await message.answer(f"Ваш Telegram ID: {message.from_user.id}")
 
 
-@router.message(lambda message: message.text == CANCEL_TEXT)
+@router.message(lambda message: message.text in CANCEL_ALIASES)
 async def cancel_flow(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Создание заявки отменено.", reply_markup=main_menu())
 
 
-@router.message(lambda message: message.text == "Помощь")
+@router.message(Command("help"))
+@router.message(lambda message: message.text in HELP_ALIASES)
 async def help_message(message: Message) -> None:
     await message.answer(HELP, reply_markup=main_menu())
 
 
-@router.message(lambda message: message.text == "Записаться на встречу")
+@router.message(Command("book"))
+@router.message(lambda message: message.text in BOOK_ALIASES)
 async def start_booking(
     message: Message,
     state: FSMContext,
@@ -262,7 +267,8 @@ async def confirm_booking(
     await _notify_admins(bot, settings, request.id, start_at, duration, email, description)
 
 
-@router.message(lambda message: message.text == "Мои заявки")
+@router.message(Command("requests"))
+@router.message(lambda message: message.text in MY_REQUESTS_ALIASES)
 async def my_requests(
     message: Message,
     session_factory: async_sessionmaker[AsyncSession],

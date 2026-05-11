@@ -4,16 +4,23 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 from app.services.slot_service import Slot
 
-CANCEL_TEXT = "Отменить"
+BOOK_TEXT = "Новая встреча"
+MY_REQUESTS_TEXT = "Мои встречи"
+HELP_TEXT = "Помощь"
+CANCEL_TEXT = "Отмена"
 CONFIRM_TEXT = "Отправить заявку"
-BACK_TO_MENU_TEXT = "В меню"
+
+BOOK_ALIASES = {BOOK_TEXT, "Записаться на встречу", "/book"}
+MY_REQUESTS_ALIASES = {MY_REQUESTS_TEXT, "Мои заявки", "/requests"}
+HELP_ALIASES = {HELP_TEXT, "/help"}
+CANCEL_ALIASES = {CANCEL_TEXT, "Отменить"}
 
 
 def main_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Записаться на встречу")],
-            [KeyboardButton(text="Мои заявки"), KeyboardButton(text="Помощь")],
+            [KeyboardButton(text=BOOK_TEXT)],
+            [KeyboardButton(text=MY_REQUESTS_TEXT), KeyboardButton(text=HELP_TEXT)],
         ],
         resize_keyboard=True,
         input_field_placeholder="Выберите действие",
@@ -24,7 +31,7 @@ def admin_menu() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Заявки на согласовании")],
-            [KeyboardButton(text="Настройки записи"), KeyboardButton(text="Статистика")],
+            [KeyboardButton(text="Настройки"), KeyboardButton(text="Статистика")],
             [KeyboardButton(text="Закрыть день"), KeyboardButton(text="Открыть день")],
         ],
         resize_keyboard=True,
@@ -36,7 +43,7 @@ def cancel_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=CANCEL_TEXT)]],
         resize_keyboard=True,
-        input_field_placeholder="Можно отменить создание заявки",
+        input_field_placeholder="Можно отменить",
     )
 
 
@@ -79,3 +86,4 @@ def confirm_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder="Подтвердите заявку",
     )
+

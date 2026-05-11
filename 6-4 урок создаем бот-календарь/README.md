@@ -33,6 +33,16 @@ python -m compileall app tests
 .\.venv\Scripts\python -m app.tools.check_telegram
 ```
 
+## Временный локальный запуск для проверки в Telegram
+
+Основной бот работает через aiogram. Если на Windows есть сетевой таймаут `aiohttp`, можно проверить пользовательский сценарий через временный локальный runner:
+
+```powershell
+.\.venv\Scripts\python -m app.tools.local_test_bot
+```
+
+Остановить runner можно сочетанием `Ctrl+C`.
+
 ## Локальная проверка миграций базы
 
 Команда ниже создает тестовую SQLite-базу только для проверки миграций. Рабочая база проекта остается PostgreSQL.
