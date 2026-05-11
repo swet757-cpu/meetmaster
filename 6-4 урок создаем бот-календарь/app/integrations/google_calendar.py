@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import asyncio
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfoNotFoundError
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -177,7 +178,7 @@ def _event_body(draft: CalendarEventDraft, timezone: str) -> dict:
 
 def _google_datetime(value: datetime, timezone: str) -> str:
     if value.tzinfo is None:
-        value = value.replace(tzinfo=ZoneInfo(timezone))
+        value = value.replace(tzinfo=_resolve_timezone(timezone))
     return value.isoformat()
 
 
@@ -185,3 +186,15 @@ def _parse_google_datetime(value: str) -> datetime:
     normalized = value.replace("Z", "+00:00")
     parsed = datetime.fromisoformat(normalized)
     return parsed.replace(tzinfo=None)
+
+
+def _resolve_timezone(timezone_name: str):
+    try:
+        return ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        fallback_offsets = {
+            "Europe/Moscow": timezone(timedelta(hours=3)),
+        }
+        if timezone_name in fallback_offsets:
+            return fallback_offsets[timezone_name]
+        raise

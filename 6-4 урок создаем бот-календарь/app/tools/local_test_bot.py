@@ -11,8 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config.settings import Settings, load_settings
 from app.db.models import RequestStatus
-from app.db.repositories import BookingRequestRepository, ClosedDayRepository, UserRepository
+from app.db.repositories import (
+    BookingRequestRepository,
+    ClosedDayRepository,
+    MeetingRepository,
+    UserRepository,
+)
 from app.db.session import create_app_session_factory, session_scope
+from app.integrations.google_calendar import (
+    CalendarEventDraft,
+    GoogleCalendarClient,
+    GoogleCalendarError,
+)
 from app.services.email_validator import is_valid_email
 from app.services.slot_service import (
     TimeInterval,
@@ -328,6 +338,7 @@ class LocalTestBot:
         async with session_scope(self.session_factory) as session:
             request_repo = BookingRequestRepository(session)
             user_repo = UserRepository(session)
+            meeting_repo = MeetingRepository(session)
             request = await request_repo.get_by_id(request_id)
             if request is None:
                 self.telegram.answer_callback_query(callback_query["id"], "Заявка не найдена.")
@@ -347,6 +358,35 @@ class LocalTestBot:
                     "Это действие недоступно для текущего статуса заявки.",
                 )
                 return
+
+            meeting = await meeting_repo.get_by_booking_request_id(request.id)
+            if self.settings.google_calendar_enabled and new_status == RequestStatus.APPROVED:
+                try:
+                    event_id = await self.create_google_event(request)
+                except GoogleCalendarError:
+                    self.telegram.answer_callback_query(
+                        callback_query["id"],
+                        "Не удалось создать событие в Google Календаре.",
+                    )
+                    return
+                await meeting_repo.create_or_update(
+                    booking_request_id=request.id,
+                    google_calendar_event_id=event_id,
+                )
+
+            if self.settings.google_calendar_enabled and new_status == RequestStatus.CANCELLED and meeting is not None:
+                try:
+                    await GoogleCalendarClient.from_settings(self.settings).delete_event(
+                        meeting.google_calendar_event_id
+                    )
+                except GoogleCalendarError:
+                    self.telegram.answer_callback_query(
+                        callback_query["id"],
+                        "Не удалось отменить событие в Google Календаре.",
+                    )
+                    return
+                await meeting_repo.mark_cancelled(meeting)
+
             await request_repo.change_status(
                 request=request,
                 new_status=new_status,
@@ -357,7 +397,11 @@ class LocalTestBot:
         if stored_user is not None:
             self.telegram.send_message(
                 stored_user.telegram_id,
-                _user_status_message(new_status, request.start_at),
+                _user_status_message(
+                    new_status,
+                    request.start_at,
+                    google_synced=self.settings.google_calendar_enabled,
+                ),
             )
 
         message = callback_query.get("message") or {}
@@ -597,11 +641,36 @@ class LocalTestBot:
         async with session_scope(self.session_factory) as session:
             request_repo = BookingRequestRepository(session)
             user_repo = UserRepository(session)
+            meeting_repo = MeetingRepository(session)
             request = await request_repo.get_by_id(request_id)
             if request is None:
                 self.states.pop(chat_id, None)
                 self.telegram.send_message(chat_id, "Заявка не найдена.", ADMIN_MENU)
                 return
+
+            meeting = await meeting_repo.get_by_booking_request_id(request.id)
+            if self.settings.google_calendar_enabled:
+                draft = _google_event_draft(request, slot.start, slot.end)
+                try:
+                    if meeting is None or meeting.status != "active":
+                        event_id = await GoogleCalendarClient.from_settings(self.settings).create_event(draft)
+                        await meeting_repo.create_or_update(
+                            booking_request_id=request.id,
+                            google_calendar_event_id=event_id,
+                        )
+                    else:
+                        await GoogleCalendarClient.from_settings(self.settings).update_event(
+                            meeting.google_calendar_event_id,
+                            draft,
+                        )
+                except GoogleCalendarError:
+                    self.states.pop(chat_id, None)
+                    self.telegram.send_message(
+                        chat_id,
+                        "Не удалось обновить Google Календарь. Перенос не сохранен.",
+                        ADMIN_MENU,
+                    )
+                    return
 
             await request_repo.reschedule(
                 request=request,
@@ -615,7 +684,11 @@ class LocalTestBot:
         if stored_user is not None:
             self.telegram.send_message(
                 stored_user.telegram_id,
-                _user_status_message(RequestStatus.RESCHEDULED, slot.start),
+                _user_status_message(
+                    RequestStatus.RESCHEDULED,
+                    slot.start,
+                    google_synced=self.settings.google_calendar_enabled,
+                ),
             )
         self.telegram.send_message(
             chat_id,
@@ -684,6 +757,18 @@ class LocalTestBot:
                 _log(f"ADMIN_NOTIFICATION_SENT request_id={request_id}")
             except Exception as exc:
                 _log_exception(f"admin notification failed request_id={request_id}", exc)
+
+    async def create_google_event(self, request) -> str:
+        busy_intervals = await GoogleCalendarClient.from_settings(self.settings).list_busy_intervals(
+            request.start_at,
+            request.end_at,
+        )
+        if busy_intervals:
+            raise GoogleCalendarError("Google Calendar slot is busy.")
+
+        return await GoogleCalendarClient.from_settings(self.settings).create_event(
+            _google_event_draft(request, request.start_at, request.end_at)
+        )
 
 
 def _parse_date(value: str) -> date | None:
@@ -757,24 +842,52 @@ def _admin_request_message(request) -> str:
     )
 
 
-def _user_status_message(status: RequestStatus, start_at: datetime) -> str:
+def _user_status_message(
+    status: RequestStatus,
+    start_at: datetime,
+    google_synced: bool = False,
+) -> str:
     if status == RequestStatus.APPROVED:
+        calendar_text = (
+            "Встреча добавлена в Google Календарь."
+            if google_synced
+            else "Добавление в Google Календарь будет подключено следующим этапом."
+        )
         return (
             "Ваша заявка подтверждена.\n\n"
             f"Дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            "Добавление в Google Календарь будет подключено следующим этапом."
+            f"{calendar_text}"
         )
     if status == RequestStatus.DECLINED:
         return "Ваша заявка отклонена. Можно выбрать другой слот."
     if status == RequestStatus.CANCELLED:
         return "Ваша заявка отменена администратором."
     if status == RequestStatus.RESCHEDULED:
+        calendar_text = (
+            "Google Календарь обновлен."
+            if google_synced
+            else "Обновление Google Календаря будет подключено следующим этапом."
+        )
         return (
             "Ваша встреча перенесена администратором.\n\n"
             f"Новая дата и время: {start_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            "Обновление Google Календаря будет подключено следующим этапом."
+            f"{calendar_text}"
         )
     return "Статус вашей заявки изменен."
+
+
+def _google_event_draft(request, start_at: datetime, end_at: datetime) -> CalendarEventDraft:
+    return CalendarEventDraft(
+        title=request.description,
+        description=(
+            f"MeetMaster\n"
+            f"Заявка: #{request.id}\n"
+            f"Email участника: {request.email}"
+        ),
+        start_at=start_at,
+        end_at=end_at,
+        attendee_email=request.email,
+    )
 
 
 def _log(message: str) -> None:
