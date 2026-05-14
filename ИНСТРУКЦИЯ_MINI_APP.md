@@ -77,6 +77,24 @@ MINI_APP_DEV_TELEGRAM_ID=8695348072
 http://127.0.0.1:8080/
 ```
 
+Для быстрой локальной проверки на порту `8090` добавлен скрипт:
+
+```powershell
+.\scripts\run_mini_app_local.ps1
+```
+
+Он запускает Mini App в dev-режиме с локальной SQLite-базой:
+
+```text
+local_data/mini_app_local.db
+```
+
+После запуска открыть:
+
+```text
+http://127.0.0.1:8090/
+```
+
 ## Проверка
 
 ```powershell

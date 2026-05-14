@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import logging
 
 from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -17,6 +18,8 @@ from app.services.slot_service import (
     generate_slots,
 )
 from app.services.telegram_webapp_auth import TelegramWebAppUser
+
+logger = logging.getLogger(__name__)
 
 
 class MiniAppBookingError(ValueError):
@@ -125,7 +128,10 @@ async def create_booking_request_from_mini_app(
         )
 
     if bot is not None:
-        await notify_admins_about_mini_app_request(bot, settings, request)
+        try:
+            await notify_admins_about_mini_app_request(bot, settings, request)
+        except Exception:
+            logger.exception("Failed to notify admins about Mini App booking request.")
 
     return request
 
