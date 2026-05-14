@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("telegram_id", sa.Integer(), nullable=False),
+        sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("first_name", sa.String(length=255), nullable=True),
         sa.Column("last_name", sa.String(length=255), nullable=True),
         sa.Column("username", sa.String(length=255), nullable=True),
@@ -101,4 +101,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_telegram_id"), table_name="users")
     op.drop_table("users")
     op.drop_table("settings")
-

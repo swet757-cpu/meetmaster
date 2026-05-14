@@ -1,6 +1,12 @@
 from datetime import date
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
 
 from app.services.slot_service import Slot
 
@@ -9,6 +15,7 @@ MY_REQUESTS_TEXT = "Мои встречи"
 HELP_TEXT = "Помощь"
 CANCEL_TEXT = "Отмена"
 CONFIRM_TEXT = "Отправить заявку"
+MINI_APP_TEXT = "Открыть календарь"
 APPROVE_ACTION = "approve"
 DECLINE_ACTION = "decline"
 CANCEL_ACTION = "cancel"
@@ -41,6 +48,19 @@ def admin_menu() -> ReplyKeyboardMarkup:
         ],
         resize_keyboard=True,
         input_field_placeholder="Админ-меню",
+    )
+
+
+def mini_app_keyboard(mini_app_url: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=MINI_APP_TEXT,
+                    web_app=WebAppInfo(url=mini_app_url),
+                )
+            ]
+        ]
     )
 
 

@@ -30,7 +30,7 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
             request_repo = BookingRequestRepository(session)
 
             user = await user_repo.upsert_from_telegram(
-                telegram_id=1001,
+                telegram_id=8695348072,
                 first_name="Анна",
                 last_name=None,
                 username="anna",
@@ -45,6 +45,7 @@ class RepositoryTest(unittest.IsolatedAsyncioTestCase):
                 description="Тестовая встреча",
             )
 
+            self.assertEqual(user.telegram_id, 8695348072)
             self.assertEqual(request.status, RequestStatus.PENDING_APPROVAL.value)
 
         async with session_scope(self.session_factory) as session:

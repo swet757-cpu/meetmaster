@@ -49,6 +49,9 @@ class Settings:
     buffer_minutes: int
     allowed_durations: tuple[int, ...]
     log_level: str
+    mini_app_dev_mode: bool
+    mini_app_dev_telegram_id: int | None
+    mini_app_url: str
 
 
 def load_settings() -> Settings:
@@ -75,4 +78,11 @@ def load_settings() -> Settings:
         buffer_minutes=int(os.environ.get("BUFFER_MINUTES", "15")),
         allowed_durations=_parse_int_list(os.environ.get("ALLOWED_DURATIONS", "30,45,60")),
         log_level=os.environ.get("LOG_LEVEL", "INFO"),
+        mini_app_dev_mode=_parse_bool(os.environ.get("MINI_APP_DEV_MODE", "false")),
+        mini_app_dev_telegram_id=(
+            int(os.environ["MINI_APP_DEV_TELEGRAM_ID"])
+            if os.environ.get("MINI_APP_DEV_TELEGRAM_ID")
+            else None
+        ),
+        mini_app_url=os.environ.get("MINI_APP_URL", ""),
     )

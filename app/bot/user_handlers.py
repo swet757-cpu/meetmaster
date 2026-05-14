@@ -11,6 +11,7 @@ from app.bot.keyboards import (
     CANCEL_ALIASES,
     CONFIRM_TEXT,
     HELP_ALIASES,
+    MINI_APP_TEXT,
     MY_REQUESTS_ALIASES,
     admin_request_actions_keyboard,
     cancel_keyboard,
@@ -18,6 +19,7 @@ from app.bot.keyboards import (
     dates_keyboard,
     durations_keyboard,
     main_menu,
+    mini_app_keyboard,
     slots_keyboard,
 )
 from app.bot.messages import HELP, UNKNOWN_ACTION, WELCOME
@@ -62,6 +64,22 @@ async def cancel_flow(message: Message, state: FSMContext) -> None:
 @router.message(lambda message: message.text in HELP_ALIASES)
 async def help_message(message: Message) -> None:
     await message.answer(HELP, reply_markup=main_menu())
+
+
+@router.message(Command("mini_app"))
+@router.message(lambda message: message.text == MINI_APP_TEXT)
+async def open_mini_app(message: Message, settings: Settings) -> None:
+    if not settings.mini_app_url:
+        await message.answer(
+            "Mini App пока не подключен. Старый сценарий записи работает через кнопку меню.",
+            reply_markup=main_menu(),
+        )
+        return
+
+    await message.answer(
+        "Откройте календарь MeetMaster в Telegram Mini App.",
+        reply_markup=mini_app_keyboard(settings.mini_app_url),
+    )
 
 
 @router.message(Command("book"))
