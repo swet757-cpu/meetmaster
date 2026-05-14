@@ -1,5 +1,6 @@
 const tg = window.Telegram?.WebApp;
 const MAX_VISIBLE_DATES = 6;
+const MAX_VISIBLE_SLOTS = 6;
 
 if (tg) {
   tg.ready();
@@ -13,6 +14,7 @@ const state = {
   selectedDuration: null,
   selectedSlot: null,
   datePage: 0,
+  slotPage: 0,
 };
 
 const elements = {
@@ -21,6 +23,7 @@ const elements = {
   dateControls: document.querySelector("#dateControls"),
   durations: document.querySelector("#durations"),
   slots: document.querySelector("#slots"),
+  slotControls: document.querySelector("#slotControls"),
   summary: document.querySelector("#summary"),
   form: document.querySelector("#bookingForm"),
   submit: document.querySelector("#submitButton"),
@@ -81,6 +84,7 @@ function renderDates() {
     button.addEventListener("click", () => {
       state.selectedDate = date;
       state.selectedSlot = null;
+      state.slotPage = 0;
       renderDates();
       loadSlots();
       updateSummary();
@@ -126,6 +130,7 @@ function renderDurations() {
     button.addEventListener("click", () => {
       state.selectedDuration = duration;
       state.selectedSlot = null;
+      state.slotPage = 0;
       renderDurations();
       loadSlots();
       updateSummary();
@@ -136,6 +141,8 @@ function renderDurations() {
 
 function renderSlots() {
   elements.slots.innerHTML = "";
+  elements.slotControls.innerHTML = "";
+
   if (!state.selectedDate || !state.selectedDuration) {
     elements.slots.className = "slot-grid muted-text";
     elements.slots.textContent = "Выберите дату и длительность.";
@@ -148,7 +155,10 @@ function renderSlots() {
   }
 
   elements.slots.className = "slot-grid";
-  state.slots.forEach((slot) => {
+  const startIndex = state.slotPage * MAX_VISIBLE_SLOTS;
+  const pageSlots = state.slots.slice(startIndex, startIndex + MAX_VISIBLE_SLOTS);
+
+  pageSlots.forEach((slot) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `slot-button ${state.selectedSlot?.start === slot.start ? "active" : ""}`;
@@ -160,6 +170,33 @@ function renderSlots() {
     });
     elements.slots.append(button);
   });
+
+  const pageCount = Math.ceil(state.slots.length / MAX_VISIBLE_SLOTS);
+  if (pageCount <= 1) {
+    return;
+  }
+
+  const prevButton = document.createElement("button");
+  prevButton.type = "button";
+  prevButton.className = "date-nav-button";
+  prevButton.textContent = "Назад";
+  prevButton.disabled = state.slotPage === 0;
+  prevButton.addEventListener("click", () => {
+    state.slotPage -= 1;
+    renderSlots();
+  });
+
+  const nextButton = document.createElement("button");
+  nextButton.type = "button";
+  nextButton.className = "date-nav-button";
+  nextButton.textContent = "Дальше";
+  nextButton.disabled = state.slotPage >= pageCount - 1;
+  nextButton.addEventListener("click", () => {
+    state.slotPage += 1;
+    renderSlots();
+  });
+
+  elements.slotControls.append(prevButton, nextButton);
 }
 
 function updateSummary() {
@@ -186,6 +223,7 @@ async function loadInitialData() {
   state.selectedDate = state.dates[0] || null;
   state.selectedDuration = state.durations[0] || null;
   state.datePage = 0;
+  state.slotPage = 0;
   renderDates();
   renderDurations();
   await loadSlots();
@@ -201,6 +239,7 @@ async function loadSlots() {
     `/api/booking/slots?target_date=${state.selectedDate}&duration=${state.selectedDuration}`,
   );
   state.slots = data.slots;
+  state.slotPage = 0;
   renderSlots();
 }
 
