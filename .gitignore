@@ -12,3 +12,4 @@ logs/
 *.log
 local_data/
 credentials/
+.deploy_keys/
