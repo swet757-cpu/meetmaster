@@ -39,6 +39,59 @@ Local deployment package is committed and pushed to GitHub:
 032914f Add Docker deployment setup
 ```
 
+## Update 2026-05-14 support response with root-login config
+
+Support found SSH hardening files on the VPS:
+
+```text
+/etc/ssh/sshd_config.d/00-ai-test-hardening.conf
+/etc/ssh/sshd_config.d/99-ai-test-hardening.conf
+```
+
+They commented out `PermitRootLogin no`, so root login is no longer blocked by that setting.
+
+However, the `authorized_keys` entry shown by support contains a typo in the temporary MeetMaster key:
+
+```text
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjJbwFTKNxMZOtrcvg=f1BS61uI6l7JNL4FcF91mbfC meetmaster-beget
+```
+
+The correct public key generated locally is:
+
+```text
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjJbwFTKNxMZOtrcvg+f1BS61uI6l7JNL4FcF91mbfC meetmaster-beget
+```
+
+The character between `cvg` and `f1` must be `+`, not `=`. Until this is corrected on the VPS, the local private key `.deploy_keys/meetmaster_beget_ed25519` cannot authenticate.
+
+After the support response, SSH was tested again and still fails:
+
+```text
+root@155.212.135.186: Permission denied (publickey).
+```
+
+Exact server-side fix needed:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+
+path = Path("/root/.ssh/authorized_keys")
+bad = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjJbwFTKNxMZOtrcvg=f1BS61uI6l7JNL4FcF91mbfC meetmaster-beget"
+good = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjJbwFTKNxMZOtrcvg+f1BS61uI6l7JNL4FcF91mbfC meetmaster-beget"
+text = path.read_text()
+if bad in text:
+    text = text.replace(bad, good)
+elif good not in text:
+    text = text.rstrip() + "\n" + good + "\n"
+path.write_text(text)
+PY
+chown root:root /root /root/.ssh /root/.ssh/authorized_keys
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
+sshd -t && systemctl restart ssh
+```
+
 Дата: 2026-05-13
 
 ## Цель
