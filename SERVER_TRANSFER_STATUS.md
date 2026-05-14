@@ -1,5 +1,44 @@
 # MeetMaster: статус проверки сервера и переноса
 
+## Update 2026-05-14 after support added the key
+
+Support said the public key was added to `/root/.ssh/authorized_keys`, but SSH login from this workstation still fails:
+
+```text
+root@155.212.135.186: Permission denied (publickey).
+```
+
+Verbose SSH diagnostics confirm that the local client offers this key:
+
+```text
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJjJbwFTKNxMZOtrcvg+f1BS61uI6l7JNL4FcF91mbfC meetmaster-beget
+SHA256:tCMCVBgLGGFA8mYP+HX8E5GPJOLI9rxyxZgM/CVZL/k
+```
+
+The server rejects it before login. Ask support to verify on VPS `155.212.135.186`:
+
+```bash
+ls -ld /root /root/.ssh
+ls -l /root/.ssh/authorized_keys
+grep -n "meetmaster-beget" /root/.ssh/authorized_keys
+sshd -T | grep -E "permitrootlogin|pubkeyauthentication|authorizedkeysfile|strictmodes"
+tail -n 100 /var/log/auth.log
+```
+
+Expected safe permissions:
+
+```bash
+chown root:root /root /root/.ssh /root/.ssh/authorized_keys
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
+```
+
+Local deployment package is committed and pushed to GitHub:
+
+```text
+032914f Add Docker deployment setup
+```
+
 Дата: 2026-05-13
 
 ## Цель
