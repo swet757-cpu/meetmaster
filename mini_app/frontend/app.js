@@ -1,4 +1,5 @@
 const tg = window.Telegram?.WebApp;
+const MAX_VISIBLE_DATES = 6;
 
 if (tg) {
   tg.ready();
@@ -11,11 +12,13 @@ const state = {
   selectedDate: null,
   selectedDuration: null,
   selectedSlot: null,
+  datePage: 0,
 };
 
 const elements = {
   status: document.querySelector("#status"),
   dates: document.querySelector("#dates"),
+  dateControls: document.querySelector("#dateControls"),
   durations: document.querySelector("#durations"),
   slots: document.querySelector("#slots"),
   summary: document.querySelector("#summary"),
@@ -65,7 +68,12 @@ function formatDate(value) {
 
 function renderDates() {
   elements.dates.innerHTML = "";
-  state.dates.forEach((date) => {
+  elements.dateControls.innerHTML = "";
+
+  const startIndex = state.datePage * MAX_VISIBLE_DATES;
+  const pageDates = state.dates.slice(startIndex, startIndex + MAX_VISIBLE_DATES);
+
+  pageDates.forEach((date) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `chip ${state.selectedDate === date ? "active" : ""}`;
@@ -79,6 +87,33 @@ function renderDates() {
     });
     elements.dates.append(button);
   });
+
+  const pageCount = Math.ceil(state.dates.length / MAX_VISIBLE_DATES);
+  if (pageCount <= 1) {
+    return;
+  }
+
+  const prevButton = document.createElement("button");
+  prevButton.type = "button";
+  prevButton.className = "date-nav-button";
+  prevButton.textContent = "Назад";
+  prevButton.disabled = state.datePage === 0;
+  prevButton.addEventListener("click", () => {
+    state.datePage -= 1;
+    renderDates();
+  });
+
+  const nextButton = document.createElement("button");
+  nextButton.type = "button";
+  nextButton.className = "date-nav-button";
+  nextButton.textContent = "Дальше";
+  nextButton.disabled = state.datePage >= pageCount - 1;
+  nextButton.addEventListener("click", () => {
+    state.datePage += 1;
+    renderDates();
+  });
+
+  elements.dateControls.append(prevButton, nextButton);
 }
 
 function renderDurations() {
@@ -150,6 +185,7 @@ async function loadInitialData() {
   state.durations = durationsData.durations;
   state.selectedDate = state.dates[0] || null;
   state.selectedDuration = state.durations[0] || null;
+  state.datePage = 0;
   renderDates();
   renderDurations();
   await loadSlots();

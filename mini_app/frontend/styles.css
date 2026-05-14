@@ -79,7 +79,8 @@ h2 {
 .ghost-button,
 .primary-button,
 .chip,
-.slot-button {
+.slot-button,
+.date-nav-button {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -119,6 +120,13 @@ h2 {
 .date-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 42px;
+  gap: 8px;
+}
+
+.date-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -130,8 +138,15 @@ h2 {
 }
 
 .chip,
-.slot-button {
+.slot-button,
+.date-nav-button {
+  min-width: 0;
   padding: 8px;
+}
+
+.date-nav-button:disabled {
+  color: var(--muted);
+  opacity: 0.45;
 }
 
 label {

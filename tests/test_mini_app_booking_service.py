@@ -8,6 +8,7 @@ from app.services.mini_app_booking_service import (
     MiniAppBookingError,
     MiniAppBookingPayload,
     create_booking_request_from_mini_app,
+    get_booking_dates,
     get_booking_slots,
     list_user_booking_requests,
 )
@@ -65,6 +66,15 @@ class MiniAppBookingServiceTest(unittest.IsolatedAsyncioTestCase):
 
         requests = await list_user_booking_requests(user, self.session_factory)
         self.assertEqual([item.id for item in requests], [request.id])
+
+    async def test_booking_dates_include_full_window_for_mini_app_paging(self) -> None:
+        dates = await get_booking_dates(
+            settings=self.settings,
+            session_factory=self.session_factory,
+            now=datetime(2026, 5, 14, 9, 0),
+        )
+
+        self.assertGreater(len(dates), 6)
 
     async def test_busy_slot_is_rejected(self) -> None:
         user = TelegramWebAppUser(id=1001, first_name="Busy")
