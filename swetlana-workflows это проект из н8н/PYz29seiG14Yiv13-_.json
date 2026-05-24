@@ -1,0 +1,176 @@
+{
+  "name": "проверка бюджета",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "934eac7e-7578-4e98-ba7c-6bbc7b7b822e",
+              "leftValue": "={{ $json.summa }}",
+              "rightValue": 1000,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        -48
+      ],
+      "id": "e00df737-c3db-4776-b549-8180f6dbc874",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -464,
+        -48
+      ],
+      "id": "453ee489-63b7-4fd7-958e-c7a11189ae89",
+      "name": "When chat message received",
+      "webhookId": "04139b9b-c4b6-454d-b193-1ca88dbdab2f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "49ae6366-feee-458f-84dd-84bebd8c153f",
+              "name": "summa",
+              "value": "={{ $json.chatInput }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -32
+      ],
+      "id": "608b5302-d7c8-42ab-9281-7cdc34f55a7e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bff0571e-b66a-4706-91f9-5a0087b53432",
+              "name": "soglasovanie",
+              "value": "Согласовано",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        -64
+      ],
+      "id": "c50d7670-6e4b-4f51-9a93-be7268b58cf1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1c93d09-f1b4-4315-bb5e-d44909afb406",
+              "name": "soglasovanie",
+              "value": "На согласование",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        112
+      ],
+      "id": "86016489-6203-4fb3-820c-2cfc4ef067a4",
+      "name": "Edit Fields2"
+    }
+  ],
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

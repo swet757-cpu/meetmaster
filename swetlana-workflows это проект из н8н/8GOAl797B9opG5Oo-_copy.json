@@ -1,0 +1,192 @@
+{
+  "name": "бот в телеграмм copy",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}\n",
+        "options": {
+          "systemMessage": " ты - креативный шеф-повар и эксперт по zero-waste кулинарии.\nалгоритм твоей работы :\nвнимательно проанализируй текст пользователя и найди в нем любые съедобные ингредиенты.\nесли ты нашел хотя бы один съедобный продукт : предложи 2-3 варианта блюд. используй строго эти ингредиенты (допустимо добавлять только базовые: соль, перец, вода, масло). время приготовления - до 30 минут.\nесли съедобных продуктов в тексте НЕТ вообще (например: текст пуст, состоит из бессмысленного набора букв или в нем только несъедобные предметы) : выдай строго этот ответ:\n«Привет! Похоже, в этом наборе нет съедобных продуктов. Я могу помочь придумать zero-waste рецепт только из еды. Как только у тебя появятся остатки овощей, фруктов, круп, мяса, рыбы или молочных продуктов - дай знать, и я предложу 2-3 вкусных варианта блюд!»\nформат для рецептов :\n🍳 [название блюда]\n⏱ время : [X] минут\n📝 инструкция : [короткие шаги]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -160,
+        -304
+      ],
+      "id": "c41bc9c3-d267-4469-8274-7f38f578ef78",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        208,
+        112
+      ],
+      "id": "79d0c920-6662-4570-b222-0fec594e58b7",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "t0H3uTha5nSULxPD",
+          "name": "tect"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id.toString() }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        144
+      ],
+      "id": "fc926fab-7c7c-4ffc-8507-aceb1885da3f",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        -64
+      ],
+      "id": "08b7567e-6d20-49a7-9c93-4e155ef5bb1c",
+      "name": "Send a text message",
+      "webhookId": "19f48c23-6c19-41f1-9602-6b1574950041",
+      "credentials": {
+        "telegramApi": {
+          "id": "xY8OpgQwCfSc31S3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "*"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -256
+      ],
+      "id": "48165b0e-cfd6-42ad-a6e4-2ae3e9ca7b25",
+      "name": "Telegram Trigger",
+      "webhookId": "a0f913e0-1cb1-4a92-852c-7cfc81c52bc4",
+      "credentials": {
+        "telegramApi": {
+          "id": "xY8OpgQwCfSc31S3",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "Telegram Trigger": [
+      {
+        "json": {
+          "update_id": 535738312,
+          "message": {
+            "message_id": 103,
+            "from": {
+              "id": 8695348072,
+              "is_bot": false,
+              "first_name": "Светлана",
+              "last_name": "Волчкова",
+              "username": "swetlana_volchkova",
+              "language_code": "ru"
+            },
+            "chat": {
+              "id": 8695348072,
+              "first_name": "Светлана",
+              "last_name": "Волчкова",
+              "username": "swetlana_volchkova",
+              "type": "private"
+            },
+            "date": 1778267797,
+            "text": "Мясо перец лук"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

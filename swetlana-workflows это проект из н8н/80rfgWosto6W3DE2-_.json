@@ -1,0 +1,238 @@
+{
+  "name": "бот в телеграмм",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}\n",
+        "options": {
+          "systemMessage": " ты - креативный шеф-повар и эксперт по zero-waste кулинарии.\nалгоритм твоей работы :\nвнимательно проанализируй текст пользователя и найди в нем любые съедобные ингредиенты.\nесли ты нашел хотя бы один съедобный продукт : предложи 2-3 варианта блюд. используй строго эти ингредиенты (допустимо добавлять только базовые: соль, перец, вода, масло). время приготовления - до 30 минут.\nесли съедобных продуктов в тексте НЕТ вообще (например: текст пуст, состоит из бессмысленного набора букв или в нем только несъедобные предметы) : выдай строго этот ответ:\n«Привет! Похоже, в этом наборе нет съедобных продуктов. Я могу помочь придумать zero-waste рецепт только из еды. Как только у тебя появятся остатки овощей, фруктов, круп, мяса, рыбы или молочных продуктов - дай знать, и я предложу 2-3 вкусных варианта блюд!»\nформат для рецептов :\n🍳 [название блюда]\n⏱ время : [X] минут\n📝 инструкция : [короткие шаги]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        192,
+        -144
+      ],
+      "id": "43874b71-fc92-4026-ba86-4b580ef8c146",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3-super-120b-a12b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        208,
+        112
+      ],
+      "id": "6863d0f1-084e-44c6-a5d7-1586beecd590",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "t0H3uTha5nSULxPD",
+          "name": "tect"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id.toString() }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        144
+      ],
+      "id": "30e3d21a-4bba-493a-8cd8-0513eeacbcd3",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        608,
+        -64
+      ],
+      "id": "dbcdbffd-671d-42ad-ae13-fe5b93dd8245",
+      "name": "Send a text message",
+      "webhookId": "db1a6098-8661-4b9e-ba12-bb178067a8a8",
+      "credentials": {
+        "telegramApi": {
+          "id": "xY8OpgQwCfSc31S3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "*"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -256
+      ],
+      "id": "59c1aad8-de3d-4b3c-998c-63efefb9dfdb",
+      "name": "Telegram Trigger",
+      "webhookId": "8103d728-eac5-4881-9673-6801945143ce",
+      "credentials": {
+        "telegramApi": {
+          "id": "xY8OpgQwCfSc31S3",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d5b211f3-7fb2-4762-8e67-3976a83e5d86",
+              "leftValue": "={{ $json.message.from.id }}",
+              "rightValue": 8695348072,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        -256
+      ],
+      "id": "ba3d50f8-8687-484c-80b6-388de393130e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "У вас нет доступа общения с ботом, обратитесь к админу ",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        -96
+      ],
+      "id": "b95f7bc2-539d-4465-933c-d703e7ea13b7",
+      "name": "Send a text message1",
+      "webhookId": "2f79c96e-3be9-47b5-b168-2eb0aee5944e",
+      "credentials": {
+        "telegramApi": {
+          "id": "xY8OpgQwCfSc31S3",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message1": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

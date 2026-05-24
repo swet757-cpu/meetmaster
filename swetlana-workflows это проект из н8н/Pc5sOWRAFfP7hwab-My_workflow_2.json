@@ -1,0 +1,28 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -304,
+        -192
+      ],
+      "id": "6d1b4b8e-ac65-4224-aa34-18591043cd07",
+      "name": "When chat message received",
+      "webhookId": "92cb6efb-8e1d-46ba-ab04-4a12c954923e"
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

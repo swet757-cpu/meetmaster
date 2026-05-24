@@ -1,0 +1,76 @@
+{
+  "name": "создаем бота с телеграмм",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -912,
+        -192
+      ],
+      "id": "57b5e9fd-394f-4227-a4e3-2a68cd7f8680",
+      "name": "When chat message received",
+      "webhookId": "b9603c06-6161-48fb-ab41-bfcdca724d66"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3bdc12c2-d512-454b-9e5a-321a79e58e91",
+              "name": "summa",
+              "value": "10",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -704,
+        -176
+      ],
+      "id": "e5d28f20-9497-42c4-b4e5-a686361a4255",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -224
+      ],
+      "id": "e4c4eb49-812c-4414-b7b3-5ae8806761e1",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
