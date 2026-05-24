@@ -27,3 +27,4 @@ id_ed25519.pub
 *.pem
 *.ppk
 NUL
+server_full_backup_*/
