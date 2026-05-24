@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeetMaster</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MeetMaster</p>
+          <h1>Календарь встреч</h1>
+        </div>
+        <button class="ghost-button" id="reloadButton" type="button">Обновить</button>
+      </header>
+
+      <section class="tabs" aria-label="Разделы">
+        <button class="tab active" data-view="booking" type="button">Запись</button>
+        <button class="tab" data-view="requests" type="button">Мои заявки</button>
+      </section>
+
+      <section id="status" class="status hidden" role="status"></section>
+
+      <section id="bookingView" class="view">
+        <div class="step">
+          <h2>Дата</h2>
+          <div id="dates" class="date-grid"></div>
+        </div>
+
+        <div class="step">
+          <h2>Длительность</h2>
+          <div id="durations" class="segmented"></div>
+        </div>
+
+        <div class="step">
+          <h2>Свободное время</h2>
+          <div id="slots" class="slot-grid muted-text">Выберите дату и длительность.</div>
+        </div>
+
+        <form id="bookingForm" class="form">
+          <label>
+            Email участника
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Тема или описание
+            <textarea id="description" name="description" rows="4" required></textarea>
+          </label>
+
+          <div id="summary" class="summary muted-text">Заполните дату, длительность и время.</div>
+          <button id="submitButton" class="primary-button" type="submit" disabled>
+            Отправить заявку
+          </button>
+        </form>
+      </section>
+
+      <section id="requestsView" class="view hidden">
+        <div class="section-title">
+          <h2>Мои заявки</h2>
+          <button class="ghost-button" id="refreshRequestsButton" type="button">Обновить</button>
+        </div>
+        <div id="requests" class="request-list"></div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

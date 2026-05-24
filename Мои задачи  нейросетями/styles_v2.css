@@ -355,6 +355,106 @@ textarea:focus {
   gap: 6px;
 }
 
+.analytics {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 9px;
+}
+
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.analytics-summary div,
+.counterparty-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.analytics-summary div {
+  display: grid;
+  gap: 3px;
+  min-height: 54px;
+  padding: 8px;
+}
+
+.analytics-summary span,
+.counterparty-row span,
+.task-table th,
+.task-table td {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.analytics-summary strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.42fr) minmax(280px, 1fr);
+  gap: 9px;
+}
+
+.analytics h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.counterparty-list {
+  display: grid;
+  gap: 6px;
+}
+
+.counterparty-row {
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+}
+
+.counterparty-row strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.task-table {
+  max-height: 168px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.task-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.task-table th,
+.task-table td {
+  padding: 6px 7px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.task-table th {
+  position: sticky;
+  top: 0;
+  background: #f7faf8;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .dot {
   width: 10px;
   height: 10px;
@@ -375,6 +475,43 @@ textarea:focus {
 
 .dot.calls {
   background: var(--violet);
+}
+
+.dot.meetings {
+  background: var(--red);
+}
+
+.analytics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analytics-head h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.analytics-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.analytics-controls label {
+  min-width: 190px;
+}
+
+.analytics-controls select {
+  min-height: 32px;
+  padding: 5px 8px;
 }
 
 .board {
@@ -449,6 +586,10 @@ textarea:focus {
   text-align: center;
 }
 
+.empty.compact {
+  min-height: 46px;
+}
+
 .task-card {
   display: grid;
   gap: 6px;
@@ -484,6 +625,10 @@ textarea:focus {
   border-left-color: var(--violet);
 }
 
+.task-card.meetings {
+  border-left-color: var(--red);
+}
+
 .task-meta,
 .task-actions {
   display: flex;
@@ -503,6 +648,13 @@ textarea:focus {
   font-weight: 700;
   line-height: 1.25;
   font-size: 13px;
+}
+
+.task-counterparty {
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .task-note {
@@ -572,6 +724,21 @@ textarea:focus {
   .board {
     grid-template-columns: repeat(5, minmax(116px, 1fr)) repeat(2, minmax(94px, 0.75fr));
   }
+
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-head,
+  .analytics-controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analytics-controls,
+  .analytics-controls label {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -594,6 +761,10 @@ textarea:focus {
 
   .board {
     grid-template-columns: minmax(240px, 1fr);
+  }
+
+  .analytics-summary {
+    grid-template-columns: 1fr;
   }
 
   .day-column {

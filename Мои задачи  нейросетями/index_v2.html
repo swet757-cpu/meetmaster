@@ -31,6 +31,10 @@
               <span>Задача</span>
               <input id="taskTitle" name="title" type="text" placeholder="Например: сверить платежи" required />
             </label>
+            <label>
+              <span>Контрагент</span>
+              <input id="taskCounterparty" name="counterparty" type="text" list="counterpartiesList" placeholder="Выберите или введите" />
+            </label>
             <div class="form-row">
               <label>
                 <span>Дата</span>
@@ -48,6 +52,7 @@
                 <option value="reports">Отчеты</option>
                 <option value="taxes">Налоги</option>
                 <option value="calls">Звонки</option>
+                <option value="meetings">Встречи</option>
               </select>
             </label>
             <button class="primary-button" type="submit">Добавить</button>
@@ -91,7 +96,47 @@
           <span><i class="dot reports"></i>Отчеты</span>
           <span><i class="dot taxes"></i>Налоги</span>
           <span><i class="dot calls"></i>Звонки</span>
+          <span><i class="dot meetings"></i>Встречи</span>
         </div>
+
+        <section class="analytics" aria-label="Статистика по контрагентам за месяц">
+          <div class="analytics-head">
+            <h2>Статистика по контрагентам</h2>
+            <div class="analytics-controls">
+              <label>
+                <span>Контрагент</span>
+                <select id="analyticsCounterparty">
+                  <option value="">Все контрагенты</option>
+                </select>
+              </label>
+              <span id="analyticsPeriod">Месяц</span>
+            </div>
+          </div>
+          <div class="analytics-summary">
+            <div>
+              <span>Контрагентов</span>
+              <strong id="counterpartyCount">0</strong>
+            </div>
+            <div>
+              <span>Задач с контрагентом</span>
+              <strong id="counterpartyTaskCount">0</strong>
+            </div>
+            <div>
+              <span>Больше всего задач</span>
+              <strong id="topCounterparty">-</strong>
+            </div>
+          </div>
+          <div class="analytics-grid">
+            <div>
+              <h3>По контрагентам</h3>
+              <div class="counterparty-list" id="counterpartyList"></div>
+            </div>
+            <div>
+              <h3>Коротко по задачам</h3>
+              <div class="task-table" id="counterpartyTaskTable"></div>
+            </div>
+          </div>
+        </section>
 
         <div class="board" id="board" aria-label="Календарь задач на две недели"></div>
       </section>
@@ -107,6 +152,10 @@
         <label>
           <span>Название</span>
           <input id="editTitle" type="text" required />
+        </label>
+        <label>
+          <span>Контрагент</span>
+          <input id="editCounterparty" type="text" list="counterpartiesList" placeholder="Выберите или введите" />
         </label>
         <div class="form-row">
           <label>
@@ -125,6 +174,7 @@
             <option value="reports">Отчеты</option>
             <option value="taxes">Налоги</option>
             <option value="calls">Звонки</option>
+            <option value="meetings">Встречи</option>
           </select>
         </label>
         <label>
@@ -142,6 +192,7 @@
       </form>
     </dialog>
 
+    <datalist id="counterpartiesList"></datalist>
     <script src="script_v2.js"></script>
   </body>
 </html>

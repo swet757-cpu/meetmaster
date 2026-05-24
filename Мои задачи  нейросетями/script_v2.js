@@ -6,7 +6,13 @@ const typeNames = {
   reports: "Отчеты",
   taxes: "Налоги",
   calls: "Звонки",
+  meetings: "Встречи",
 };
+const baseCounterparties = [
+  "Уралсувенир",
+  "Уралфинанст",
+  "Деловой персонал",
+];
 
 const state = {
   today: startOfDay(new Date()),
@@ -26,13 +32,23 @@ const els = {
   todayCount: document.querySelector("#todayCount"),
   taskForm: document.querySelector("#taskForm"),
   taskTitle: document.querySelector("#taskTitle"),
+  taskCounterparty: document.querySelector("#taskCounterparty"),
   taskDate: document.querySelector("#taskDate"),
   taskTime: document.querySelector("#taskTime"),
   taskType: document.querySelector("#taskType"),
+  counterpartyCount: document.querySelector("#counterpartyCount"),
+  counterpartyTaskCount: document.querySelector("#counterpartyTaskCount"),
+  topCounterparty: document.querySelector("#topCounterparty"),
+  analyticsPeriod: document.querySelector("#analyticsPeriod"),
+  analyticsCounterparty: document.querySelector("#analyticsCounterparty"),
+  counterpartyList: document.querySelector("#counterpartyList"),
+  counterpartyTaskTable: document.querySelector("#counterpartyTaskTable"),
+  counterpartiesList: document.querySelector("#counterpartiesList"),
   dialog: document.querySelector("#taskDialog"),
   editForm: document.querySelector("#editForm"),
   editId: document.querySelector("#editId"),
   editTitle: document.querySelector("#editTitle"),
+  editCounterparty: document.querySelector("#editCounterparty"),
   editDate: document.querySelector("#editDate"),
   editTime: document.querySelector("#editTime"),
   editType: document.querySelector("#editType"),
@@ -76,11 +92,17 @@ function bindEvents() {
     render();
   });
 
+  els.analyticsCounterparty.addEventListener("change", () => {
+    renderCounterpartyStats();
+  });
+
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    const taskInfo = parseTaskInput(els.taskTitle.value, els.taskCounterparty.value);
     state.tasks.push({
       id: crypto.randomUUID(),
-      title: els.taskTitle.value.trim(),
+      title: taskInfo.title,
+      counterparty: taskInfo.counterparty,
       date: els.taskDate.value,
       time: els.taskTime.value,
       type: els.taskType.value,
@@ -88,6 +110,7 @@ function bindEvents() {
       done: false,
     });
     els.taskTitle.value = "";
+    els.taskCounterparty.value = "";
     persistAndRender();
   });
 
@@ -99,7 +122,9 @@ function bindEvents() {
     }
     const task = state.tasks.find((item) => item.id === els.editId.value);
     if (!task) return;
-    task.title = els.editTitle.value.trim();
+    const taskInfo = parseTaskInput(els.editTitle.value, els.editCounterparty.value);
+    task.title = taskInfo.title;
+    task.counterparty = taskInfo.counterparty;
     task.date = els.editDate.value;
     task.time = els.editTime.value;
     task.type = els.editType.value;
@@ -117,9 +142,12 @@ function bindEvents() {
 }
 
 function render() {
+  renderCounterpartyOptions();
+  renderAnalyticsCounterpartyOptions();
   renderBoard();
   renderMiniCalendar();
   renderStats();
+  renderCounterpartyStats();
 }
 
 function renderBoard() {
@@ -176,6 +204,7 @@ function renderBoard() {
 }
 
 function createTaskCard(task) {
+  const taskInfo = getTaskInfo(task);
   const card = document.createElement("article");
   card.className = `task-card ${task.type} ${task.done ? "done" : ""}`;
   card.draggable = true;
@@ -185,7 +214,8 @@ function createTaskCard(task) {
       <span class="task-time">${task.time}</span>
       <span class="task-time">${typeNames[task.type]}</span>
     </div>
-    <div class="task-title">${escapeHTML(task.title)}</div>
+    ${taskInfo.counterparty ? `<div class="task-counterparty">${escapeHTML(taskInfo.counterparty)}</div>` : ""}
+    <div class="task-title">${escapeHTML(taskInfo.title)}</div>
     ${task.note ? `<div class="task-note">${escapeHTML(task.note)}</div>` : ""}
     <div class="task-actions">
       <button class="small-button done-toggle" type="button">${task.done ? "Вернуть" : "Готово"}</button>
@@ -254,9 +284,100 @@ function renderStats() {
   els.todayCount.textContent = state.tasks.filter((task) => task.date === toISODate(new Date())).length;
 }
 
+function renderCounterpartyStats() {
+  const monthTasks = getMonthTasks();
+  const targetCounterparties = new Set(baseCounterparties);
+  const selectedCounterparty = els.analyticsCounterparty.value;
+  const allCounterpartyTasks = monthTasks.filter((task) => {
+    const taskInfo = getTaskInfo(task);
+    if (!targetCounterparties.has(taskInfo.counterparty)) return false;
+    return !selectedCounterparty || taskInfo.counterparty === selectedCounterparty;
+  });
+  const rangeTasks = allCounterpartyTasks;
+  const stats = new Map();
+
+  rangeTasks.forEach((task) => {
+    const taskInfo = getTaskInfo(task);
+    const current = stats.get(taskInfo.counterparty) || { total: 0, meetings: 0, done: 0 };
+    current.total += 1;
+    if (task.type === "meetings") current.meetings += 1;
+    if (task.done) current.done += 1;
+    stats.set(taskInfo.counterparty, current);
+  });
+
+  const rows = [...stats.entries()].sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0], "ru"));
+  const top = rows[0];
+  els.analyticsPeriod.textContent = getMonthTitle(state.monthDate);
+
+  els.counterpartyCount.textContent = rows.length;
+  els.counterpartyTaskCount.textContent = rangeTasks.length;
+  els.topCounterparty.textContent = top ? `${top[0]} (${top[1].total})` : "-";
+
+  if (!rows.length) {
+    els.counterpartyList.innerHTML = `<div class="empty compact">Данных нет</div>`;
+  } else {
+    els.counterpartyList.innerHTML = rows
+      .map(([name, item]) => {
+        const open = item.total - item.done;
+        return `
+          <div class="counterparty-row">
+            <strong>${escapeHTML(name)}</strong>
+            <span>${item.total} задач, ${item.meetings} встреч, ${item.done} выполнено, ${open} в работе</span>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  if (!allCounterpartyTasks.length) {
+    els.counterpartyTaskTable.innerHTML = `<div class="empty compact">Данных нет</div>`;
+    return;
+  }
+
+  const sortedTasks = [...allCounterpartyTasks].sort((a, b) => {
+    const firstCounterparty = getTaskInfo(a).counterparty;
+    const secondCounterparty = getTaskInfo(b).counterparty;
+    const byCounterparty = firstCounterparty.localeCompare(secondCounterparty, "ru");
+    if (byCounterparty) return byCounterparty;
+    return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
+  });
+
+  els.counterpartyTaskTable.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Организация</th>
+          <th>Дата</th>
+          <th>Задача</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sortedTasks
+          .map(
+            (task) => {
+              const taskInfo = getTaskInfo(task);
+              return `
+                <tr>
+                  <td>${escapeHTML(taskInfo.counterparty)}</td>
+                  <td>${formatDateShort(parseISODate(task.date))}</td>
+                  <td>${escapeHTML(taskInfo.title)}</td>
+                  <td>${task.done ? "Выполнено" : "В работе"}</td>
+                </tr>
+              `;
+            },
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 function openEditDialog(task) {
+  const taskInfo = getTaskInfo(task);
   els.editId.value = task.id;
-  els.editTitle.value = task.title;
+  els.editTitle.value = taskInfo.title;
+  els.editCounterparty.value = taskInfo.counterparty || "";
   els.editDate.value = task.date;
   els.editTime.value = task.time;
   els.editType.value = task.type;
@@ -286,6 +407,7 @@ function seedTasksIfEmpty() {
     {
       id: crypto.randomUUID(),
       title: "Проверить входящие платежи",
+      counterparty: "Уралсувенир",
       date: today,
       time: "09:30",
       type: "payments",
@@ -295,6 +417,7 @@ function seedTasksIfEmpty() {
     {
       id: crypto.randomUUID(),
       title: "Подготовить отчет по ДДС",
+      counterparty: "Уралфинанст",
       date: today,
       time: "12:00",
       type: "reports",
@@ -303,7 +426,8 @@ function seedTasksIfEmpty() {
     },
     {
       id: crypto.randomUUID(),
-      title: "Уточнить счет у поставщика",
+      title: "Уточнить счет и закрывающие документы",
+      counterparty: "Деловой персонал",
       date: tomorrow,
       time: "15:30",
       type: "calls",
@@ -317,6 +441,93 @@ function seedTasksIfEmpty() {
 function setDefaultInputs() {
   els.taskDate.value = toISODate(new Date());
   els.taskTime.value = "09:00";
+}
+
+function getRangeTasks() {
+  const rangeEnd = addDays(state.rangeStart, 13);
+  return state.tasks.filter((task) => {
+    const date = parseISODate(task.date);
+    return date >= state.rangeStart && date <= rangeEnd;
+  });
+}
+
+function getMonthTasks() {
+  const monthStart = startOfMonth(state.monthDate);
+  const nextMonthStart = addMonths(monthStart, 1);
+  return state.tasks.filter((task) => {
+    const date = parseISODate(task.date);
+    return date >= monthStart && date < nextMonthStart;
+  });
+}
+
+function getCounterparties() {
+  return [...baseCounterparties].sort((a, b) => a.localeCompare(b, "ru"));
+}
+
+function renderCounterpartyOptions() {
+  els.counterpartiesList.innerHTML = getCounterparties()
+    .map((name) => `<option value="${escapeHTML(name)}"></option>`)
+    .join("");
+}
+
+function renderAnalyticsCounterpartyOptions() {
+  const currentValue = els.analyticsCounterparty.value;
+  els.analyticsCounterparty.innerHTML = `
+    <option value="">Все контрагенты</option>
+    ${getCounterparties().map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}
+  `;
+  if (getCounterparties().includes(currentValue)) {
+    els.analyticsCounterparty.value = currentValue;
+  }
+}
+
+function normalizeCounterparty(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function parseTaskInput(titleValue, counterpartyValue) {
+  const explicitCounterparty = normalizeCounterparty(counterpartyValue);
+  const parsed = parseCounterpartyFromTitle(titleValue);
+  return {
+    title: explicitCounterparty ? stripCounterpartyFromTitle(titleValue, explicitCounterparty) : parsed.title,
+    counterparty: explicitCounterparty || parsed.counterparty,
+  };
+}
+
+function getTaskInfo(task) {
+  const parsed = parseCounterpartyFromTitle(task.title);
+  return {
+    title: task.counterparty ? stripCounterpartyFromTitle(task.title, task.counterparty) : parsed.title,
+    counterparty: task.counterparty || parsed.counterparty,
+  };
+}
+
+function parseCounterpartyFromTitle(titleValue) {
+  const title = titleValue.trim();
+  const counterparty = baseCounterparties.find((name) => title.toLowerCase().startsWith(name.toLowerCase()));
+  if (!counterparty) return { title, counterparty: "" };
+  const cleanedTitle = title
+    .slice(counterparty.length)
+    .replace(/^[\s:;,.–—-]+/, "")
+    .trim();
+  return {
+    title: cleanedTitle || title,
+    counterparty,
+  };
+}
+
+function stripCounterpartyFromTitle(titleValue, counterparty) {
+  const title = titleValue.trim();
+  if (!title.toLowerCase().startsWith(counterparty.toLowerCase())) return title;
+  return title
+    .slice(counterparty.length)
+    .replace(/^[\s:;,.–—-]+/, "")
+    .trim() || title;
+}
+
+function getMonthTitle(date) {
+  const title = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(date);
+  return title.charAt(0).toUpperCase() + title.slice(1);
 }
 
 function startOfDay(date) {
