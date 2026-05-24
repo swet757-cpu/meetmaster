@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>MeetMaster</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260514-2240" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
@@ -28,6 +28,7 @@
         <div class="step">
           <h2>Дата</h2>
           <div id="dates" class="date-grid"></div>
+          <div id="dateControls" class="date-controls"></div>
         </div>
 
         <div class="step">
@@ -38,6 +39,7 @@
         <div class="step">
           <h2>Свободное время</h2>
           <div id="slots" class="slot-grid muted-text">Выберите дату и длительность.</div>
+          <div id="slotControls" class="date-controls"></div>
         </div>
 
         <form id="bookingForm" class="form">
@@ -66,6 +68,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20260514-2240"></script>
   </body>
 </html>
