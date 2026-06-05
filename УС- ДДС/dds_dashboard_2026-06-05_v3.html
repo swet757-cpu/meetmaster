@@ -16,6 +16,13 @@ button{height:32px;border:1px solid #b9c5d4;border-radius:6px;background:#eef3f8
 .compare{grid-template-columns:1fr 1fr 1fr;margin-bottom:10px}.compare-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.compare-cell{border-left:3px solid var(--line);padding-left:8px;min-width:0}.compare-cell span{display:block;color:var(--muted);font-size:11px}.compare-cell b{display:block;font-size:16px;margin-top:2px;white-space:nowrap}.compare-cell.diff{border-left-color:var(--blue)}.charts{grid-template-columns:1.35fr 1fr}.two{grid-template-columns:1fr 1fr;margin-top:10px}
 canvas{width:100%;height:240px;display:block}.two canvas{height:230px}table{width:100%;border-collapse:collapse}td,th{padding:6px 7px;border-bottom:1px solid #edf1f5;text-align:left;vertical-align:top}th{color:var(--muted);font-weight:600}.num{text-align:right;white-space:nowrap}.note{font-size:11px;color:var(--muted);margin-top:8px}
 @media (max-width:940px){main{padding:14px}.top{display:block}.filters,.filter-row,.entry-row,.kpis,.compare,.charts,.two{grid-template-columns:1fr}.kpi b{font-size:17px}.compare-grid{grid-template-columns:1fr}}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.compare{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}
+.compare-grid{grid-template-columns:repeat(3,minmax(120px,1fr));overflow-x:auto;padding-bottom:2px}
+.kpi b,.compare-cell b{font-size:clamp(14px,1.2vw,18px);line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+.panel{overflow-x:auto}
+.num{min-width:150px}
+@media (max-width:520px){.compare{grid-template-columns:1fr}.compare-grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}.num{min-width:120px}}
 </style>
 </head>
 <body>
