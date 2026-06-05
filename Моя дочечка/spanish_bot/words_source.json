@@ -1,0 +1,182 @@
+[
+  {
+    "word": "hola",
+    "translation": "привет",
+    "association": "Hola похоже на русское «ола», как короткое дружеское приветствие.",
+    "example": "Hola, ¿cómo estás?"
+  },
+  {
+    "word": "gracias",
+    "translation": "спасибо",
+    "association": "Gracias звучит как «грация»: благодарность делает речь грациозной.",
+    "example": "Gracias por tu ayuda."
+  },
+  {
+    "word": "por favor",
+    "translation": "пожалуйста",
+    "association": "Por favor буквально ощущается как просьба «сделай одолжение».",
+    "example": "Un café, por favor."
+  },
+  {
+    "word": "agua",
+    "translation": "вода",
+    "association": "Agua похоже на «аква», то есть вода.",
+    "example": "Quiero un vaso de agua."
+  },
+  {
+    "word": "casa",
+    "translation": "дом",
+    "association": "Casa похоже на «хата» по смыслу: место, где живут.",
+    "example": "Mi casa está cerca."
+  },
+  {
+    "word": "comida",
+    "translation": "еда",
+    "association": "Comida начинается как «ком»: представь ком еды.",
+    "example": "La comida está lista."
+  },
+  {
+    "word": "amigo",
+    "translation": "друг",
+    "association": "Amigo часто слышно в фильмах: «мой амиго» значит друг.",
+    "example": "Él es mi amigo."
+  },
+  {
+    "word": "familia",
+    "translation": "семья",
+    "association": "Familia почти как английское family.",
+    "example": "Mi familia vive en Madrid."
+  },
+  {
+    "word": "trabajo",
+    "translation": "работа",
+    "association": "Trabajo можно связать с трудом: звучит тяжелее, чем отдых.",
+    "example": "Tengo mucho trabajo hoy."
+  },
+  {
+    "word": "dinero",
+    "translation": "деньги",
+    "association": "Dinero похоже на «динар», денежную единицу.",
+    "example": "Necesito dinero para el taxi."
+  },
+  {
+    "word": "tiempo",
+    "translation": "время",
+    "association": "Tiempo похоже на tempo: темп связан со временем.",
+    "example": "No tengo tiempo."
+  },
+  {
+    "word": "día",
+    "translation": "день",
+    "association": "Día похоже на «day» по смыслу.",
+    "example": "Hoy es un buen día."
+  },
+  {
+    "word": "noche",
+    "translation": "ночь",
+    "association": "Noche звучит похоже на «ночь».",
+    "example": "Buenas noches."
+  },
+  {
+    "word": "mañana",
+    "translation": "утро; завтра",
+    "association": "Mañana часто значит «завтра»: запомни как «маняна, сделаю завтра».",
+    "example": "Nos vemos mañana."
+  },
+  {
+    "word": "calle",
+    "translation": "улица",
+    "association": "Calle можно представить как «колея» дороги.",
+    "example": "La calle es muy larga."
+  },
+  {
+    "word": "ciudad",
+    "translation": "город",
+    "association": "Ciudad похоже на city по смыслу.",
+    "example": "Barcelona es una ciudad bonita."
+  },
+  {
+    "word": "país",
+    "translation": "страна",
+    "association": "País похоже на «пейзаж»: пейзажи страны.",
+    "example": "España es un país europeo."
+  },
+  {
+    "word": "libro",
+    "translation": "книга",
+    "association": "Libro похоже на library: место, где много книг.",
+    "example": "Estoy leyendo un libro."
+  },
+  {
+    "word": "escuela",
+    "translation": "школа",
+    "association": "Escuela похоже на school по смыслу.",
+    "example": "Los niños van a la escuela."
+  },
+  {
+    "word": "profesor",
+    "translation": "учитель",
+    "association": "Profesor почти как «профессор».",
+    "example": "El profesor explica la lección."
+  },
+  {
+    "word": "coche",
+    "translation": "машина",
+    "association": "Coche можно связать с «каретой»: транспорт.",
+    "example": "Tengo un coche rojo."
+  },
+  {
+    "word": "tren",
+    "translation": "поезд",
+    "association": "Tren почти как train.",
+    "example": "El tren llega a las ocho."
+  },
+  {
+    "word": "avión",
+    "translation": "самолет",
+    "association": "Avión похоже на aviation.",
+    "example": "El avión sale mañana."
+  },
+  {
+    "word": "mercado",
+    "translation": "рынок",
+    "association": "Mercado похоже на «маркет».",
+    "example": "Compro fruta en el mercado."
+  },
+  {
+    "word": "precio",
+    "translation": "цена",
+    "association": "Precio похоже на price.",
+    "example": "¿Cuál es el precio?"
+  },
+  {
+    "word": "barato",
+    "translation": "дешевый",
+    "association": "Barato можно запомнить как bargain: выгодная покупка.",
+    "example": "Este pan es barato."
+  },
+  {
+    "word": "caro",
+    "translation": "дорогой",
+    "association": "Caro похоже на car: машина часто дорогая.",
+    "example": "El hotel es caro."
+  },
+  {
+    "word": "feliz",
+    "translation": "счастливый",
+    "association": "Feliz Navidad слышали многие: счастливого Рождества.",
+    "example": "Estoy feliz."
+  },
+  {
+    "word": "rápido",
+    "translation": "быстрый",
+    "association": "Rápido похоже на rapid.",
+    "example": "El tren es rápido."
+  },
+  {
+    "word": "lento",
+    "translation": "медленный",
+    "association": "Lento похоже на lento в музыке: медленно.",
+    "example": "El servicio es lento."
+  }
+]

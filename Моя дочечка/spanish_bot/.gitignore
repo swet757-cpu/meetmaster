@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+words.db
+.env
+token.txt
+*.token
