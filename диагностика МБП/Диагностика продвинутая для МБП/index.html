@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Продвинутая диагностика МБП</title>
+    <link rel="stylesheet" href="styles.css?v=2026-06-29-1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="side-panel" aria-label="Сводка диагностики">
+        <div class="brand">
+          <div class="brand-sign" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <p class="eyebrow">Финдиректор на аутсорсе</p>
+            <h1>Диагностика МБП</h1>
+          </div>
+        </div>
+
+        <div class="score-strip">
+          <div>
+            <span>Прогресс</span>
+            <strong id="progress-label">0 из 26</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progress-fill"></span>
+          </div>
+        </div>
+
+        <nav class="stage-list" id="stage-list"></nav>
+      </aside>
+
+      <section class="work-zone">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Интерактивное коммерческое предложение</p>
+            <h2>Покажем финансовые риски и подходящий формат сопровождения</h2>
+          </div>
+          <button class="icon-button" id="restart-button" type="button" title="Начать заново" aria-label="Начать заново">
+            &#8635;
+          </button>
+        </header>
+
+        <section class="question-panel" id="question-panel" aria-live="polite"></section>
+
+        <footer class="step-actions">
+          <button class="secondary-action" id="prev-button" type="button">Назад</button>
+          <button class="primary-action" id="next-button" type="button">Далее</button>
+        </footer>
+      </section>
+
+      <section class="result-panel" aria-label="Результат диагностики">
+        <div class="result-head">
+          <p class="eyebrow">Предварительное КП</p>
+          <h2 id="offer-title">Заполните диагностику</h2>
+          <p id="offer-summary">Результат появится после первых ответов.</p>
+        </div>
+
+        <div class="metrics-grid" id="metrics-grid"></div>
+        <div class="expert-grid" id="expert-grid"></div>
+
+        <section class="proposal" id="proposal">
+          <h3>Текст для клиента</h3>
+          <pre id="proposal-text"></pre>
+        </section>
+
+        <div class="share-actions">
+          <button class="primary-action" id="copy-button" type="button">Скопировать результат</button>
+          <button class="secondary-action" id="print-button" type="button">Печать / PDF</button>
+          <a class="secondary-action link-action" id="telegram-link" target="_blank" rel="noreferrer">Telegram</a>
+          <a class="secondary-action link-action" id="mail-link">Почта</a>
+        </div>
+        <p class="status-line" id="status-line"></p>
+      </section>
+    </main>
+
+    <script src="app.js?v=2026-06-29-1"></script>
+  </body>
+</html>
