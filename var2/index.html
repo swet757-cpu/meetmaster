@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Диагностика управленческого учета МБП вар2</title>
+    <link rel="stylesheet" href="styles.css?v=2026-06-27-5" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Навигация по диагностике">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <p class="eyebrow">Финансовая диагностика</p>
+            <h1>МБП</h1>
+          </div>
+        </div>
+
+        <div class="score-card">
+          <p>Текущий риск</p>
+          <strong id="live-risk">0 баллов</strong>
+          <div class="risk-meter" aria-hidden="true">
+            <span id="risk-fill"></span>
+          </div>
+        </div>
+
+        <nav class="section-nav" id="section-nav"></nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Анкета для собственника вар2</p>
+            <h2>Проверка потребности в управленческом учете</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="restart-button" type="button" title="Начать заново" aria-label="Начать заново">
+              ↺
+            </button>
+            <button class="primary-action" id="result-button" type="button">Итог</button>
+          </div>
+        </header>
+
+        <div class="progress-row">
+          <div class="progress-track" aria-hidden="true">
+            <span id="progress-fill"></span>
+          </div>
+          <span id="progress-label">0 из 20</span>
+        </div>
+
+        <section class="question-panel" id="question-panel" aria-live="polite"></section>
+
+        <footer class="step-actions">
+          <button class="secondary-action" id="prev-button" type="button">Назад</button>
+          <button class="primary-action" id="next-button" type="button">Далее</button>
+        </footer>
+      </section>
+
+      <section class="result-pane" id="result-pane" aria-label="Результат диагностики">
+        <div class="result-visual" aria-hidden="true">
+          <div class="visual-grid">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="visual-line"></div>
+        </div>
+        <div id="result-content"></div>
+      </section>
+    </main>
+
+    <script src="app.js?v=2026-06-27-5"></script>
+  </body>
+</html>
